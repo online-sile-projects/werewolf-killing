@@ -288,9 +288,38 @@ class WerewolfGame {
   }
   
   /**
+   * 重置遊戲狀態
+   */
+  resetGame() {
+    // 清空玩家列表
+    this.players = [];
+    this.humanPlayerId = null;
+    
+    // 重置遊戲狀態
+    this.gameStarted = false;
+    this.state = {
+      phase: '遊戲設置',
+      day: 0,
+      nightKilled: null,
+      dayDiscussions: [],
+      votes: {},
+      seerChecks: [],
+      werewolfVotes: {},
+      werewolfVoteResult: null,
+      witchSaved: false,
+      witchPoisoned: false,
+      guardProtected: null,
+      lastProtected: null
+    };
+  }
+
+  /**
    * 啟動遊戲
    */
   async startGame() {
+    // 重置遊戲狀態
+    this.resetGame();
+    
     this.log.title('=== 歡迎來到狼人殺遊戲（控制台版本）===');
     this.log.system('輸入 Werewolf._answerQuestion("您的回答") 來回答問題');
     this.log.divider();
