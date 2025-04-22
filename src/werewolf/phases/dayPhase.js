@@ -18,6 +18,15 @@ export async function handleDayDiscussionPhase(game) {
       const player = game.players.find(p => p.id === id);
       game.log.dead(`- ${player.name} (ID: ${player.id})`);
       
+      // 使用 AI 生成死亡故事敘述
+      if (game.settings.useAI && game.apiManager) {
+        const context = `在第 ${game.state.day} 天的早晨，村民們發現 ${player.name} (角色: ${player.role}) 死亡了。`;
+        const story = await game.generateStoryWithAI(context);
+        if (story) {
+          game.log.story(story);
+        }
+      }
+      
       // 獵人死亡時可以開槍
       if (player.role === game.roles.HUNTER && player.abilities.canShoot) {
         if (player.isHuman) {
@@ -29,6 +38,15 @@ export async function handleDayDiscussionPhase(game) {
     }
   } else {
     game.log.success('昨晚是平安夜，沒有人死亡！');
+    
+    // 使用 AI 生成平安夜故事敘述
+    if (game.settings.useAI && game.apiManager) {
+      const context = `第 ${game.state.day} 天是平安夜，沒有村民死亡。`;
+      const story = await game.generateStoryWithAI(context);
+      if (story) {
+        game.log.story(story);
+      }
+    }
   }
   
   // 更新遊戲狀態
@@ -42,6 +60,24 @@ export async function handleDayDiscussionPhase(game) {
   
   // 討論階段
   game.log.day('現在進入討論階段，請玩家們自由發言...');
+  
+  // 使用 AI 生成 NPC 自由發言
+  if (game.settings.useAI && game.apiManager) {
+    game.log.info('NPC 玩家正在發言中...');
+    
+    const alivePlayers = game.getAlivePlayers().filter(p => !p.isHuman);
+    for (const player of alivePlayers) {
+      const context = `這是遊戲的第 ${game.state.day} 天白天討論階段，請您以狼人殺遊戲中的 ${player.role} 角色身份，根據當前情況發表簡短的發言。`;
+      const response = await game.generateNpcResponseWithAI(player.id, context);
+      if (response) {
+        game.log.player(`${player.name}: ${response}`);
+      } else {
+        // 如果 AI 生成失敗，使用預設發言
+        game.log.player(`${player.name}: 我覺得大家還是謹慎行事比較好，注意觀察每個人的發言。`);
+      }
+    }
+  }
+  
   await game.ask('按Enter進入投票階段...');
   
   // 進入投票階段

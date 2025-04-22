@@ -16,7 +16,8 @@ export function createLogger() {
     role: 'color: #00cc99; font-weight: bold;',
     action: 'color: #cc6633;',
     dead: 'color: #cc0000; text-decoration: line-through;',
-    system: 'color: #999999; font-style: italic;'
+    system: 'color: #999999; font-style: italic;',
+    story: 'color: #6633cc; font-style: italic; background-color: rgba(230, 230, 250, 0.1);'
   };
 
   return {
@@ -33,6 +34,10 @@ export function createLogger() {
     action: (text) => console.log(`%c${text}`, styles.action),
     dead: (text) => console.log(`%c${text}`, styles.dead),
     system: (text) => console.log(`%c${text}`, styles.system),
+    story: (text) => {
+      console.log('%c【AI 故事敘述】', 'color: #6633cc; font-weight: bold;');
+      console.log(`%c${text}`, styles.story);
+    },
     divider: () => console.log('%c' + '-'.repeat(50), 'color: #cccccc;')
   };
 }

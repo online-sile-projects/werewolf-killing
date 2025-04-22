@@ -39,7 +39,8 @@ export class WerewolfGame {
     // 預設遊戲設定
     this.settings = {
       playerCount: 8,
-      roleDistribution: DEFAULT_ROLE_DISTRIBUTION
+      roleDistribution: DEFAULT_ROLE_DISTRIBUTION,
+      useAI: false  // 預設不使用 AI
     };
     
     this.humanPlayerId = null;
@@ -47,6 +48,9 @@ export class WerewolfGame {
     
     this._waitingForInput = false;
     this._currentResolve = null;
+    
+    // API 管理器 (由 index.js 設定)
+    this.apiManager = null;
   }
   
   /**
@@ -460,5 +464,90 @@ export class WerewolfGame {
    */
   getRoleName(roleKey) {
     return this.roles[roleKey] || roleKey;
+  }
+  
+  /**
+   * 使用 AI 生成故事敘述
+   */
+  async generateStoryWithAI(context) {
+    if (!this.apiManager || !this.settings.useAI) {
+      return null;
+    }
+    
+    try {
+      const response = await this.apiManager.generateStory(context);
+      if (response && response.response) {
+        return response.response;
+      }
+      return null;
+    } catch (error) {
+      console.error('生成故事時發生錯誤:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * 使用 AI 生成 NPC 回應
+   */
+  async generateNpcResponseWithAI(playerId, context) {
+    if (!this.apiManager || !this.settings.useAI) {
+      return null;
+    }
+    
+    const player = this.players.find(p => p.id === playerId);
+    if (!player || player.isHuman) {
+      return null;
+    }
+    
+    try {
+      const response = await this.apiManager.generateNpcResponse(player.role, context);
+      if (response && response.response) {
+        return response.response;
+      }
+      return null;
+    } catch (error) {
+      console.error('生成 NPC 回應時發生錯誤:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * 啟用或禁用 AI 功能
+   */
+  setAIEnabled(enabled) {
+    if (!this.apiManager && enabled) {
+      this.log.warning('未設定 API 管理器，無法啟用 AI 功能。');
+      return false;
+    }
+    
+    // 如果要啟用 AI，先測試連線
+    if (enabled) {
+      this.testAIConnection();
+    }
+    
+    this.settings.useAI = enabled;
+    this.log.system(`已${enabled ? '啟用' : '禁用'} AI 輔助功能`);
+    return true;
+  }
+  
+  /**
+   * 測試 AI API 連線
+   */
+  async testAIConnection() {
+    if (!this.apiManager) {
+      this.log.error('未設定 API 管理器，無法測試 AI 連線。');
+      return false;
+    }
+    
+    this.log.system('正在測試 AI API 連線...');
+    
+    const result = await this.apiManager.testApiConnection();
+    if (result.success) {
+      this.log.success('AI API 連線測試成功！');
+      return true;
+    } else {
+      this.log.error(`AI API 連線測試失敗: ${result.error || '未知錯誤'}`);
+      return false;
+    }
   }
 }
