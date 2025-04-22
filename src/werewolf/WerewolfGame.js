@@ -320,6 +320,14 @@ export class WerewolfGame {
     const totalPlayers = this.players.length;
     let roleDistribution = { ...this.settings.roleDistribution };
     
+    // 檢查玩家人數，調整狼人數量
+    if (totalPlayers <= 4 && roleDistribution.WEREWOLF > 1) {
+      this.log.system('玩家人數少於或等於4人，狼人數量調整為1');
+      const werewolfDiff = roleDistribution.WEREWOLF - 1;
+      roleDistribution.WEREWOLF = 1;
+      roleDistribution.VILLAGER += werewolfDiff; // 多餘的狼人變成村民
+    }
+    
     // 計算總角色數
     const totalRoles = Object.values(roleDistribution).reduce((sum, count) => sum + count, 0);
     
