@@ -2,6 +2,7 @@
  * apiManager.js - API 金鑰管理與呼叫相關功能
  * 應用於狼人殺遊戲的控制台版本
  */
+import { GameHistory } from '../history/GameHistory.js';
 
 export class ApiManager {
   constructor() {
@@ -12,8 +13,8 @@ export class ApiManager {
       openai: ''
     };
     
-    // 遊戲歷史紀錄
-    this.gameHistory = [];
+    // 建立遊戲歷史紀錄物件
+    this.gameHistory = new GameHistory();
     
     // 初始化
     this.init();
@@ -446,62 +447,13 @@ export class ApiManager {
     let fullContext = gameContext;
     
     // 如果有遊戲歷史，添加到上下文中
-    if (this.gameHistory.length > 0) {
-      const historyText = this.formatGameHistoryToText();
+    if (this.gameHistory.getAllRecords().length > 0) {
+      const historyText = this.gameHistory.formatToText();
       fullContext = `【遊戲完整上下文】\n${historyText}\n\n【當前情境】\n${gameContext}`;
     }
     
     // 用更豐富的上下文呼叫 API
     return await this.getResponse(fullContext, systemInstruction || defaultInstruction);
-  }
-  
-  // 添加遊戲訊息到歷史紀錄
-  addGameMessage(role, message, phase, day) {
-    this.gameHistory.push({
-      timestamp: new Date().toISOString(),
-      role,
-      message,
-      phase,
-      day
-    });
-    console.log(`紀錄了一則來自 ${role} 的訊息`);
-  }
-  
-  // 清除遊戲歷史紀錄
-  clearGameHistory() {
-    this.gameHistory = [];
-    console.log('已清除遊戲歷史紀錄');
-    return true;
-  }
-  
-  // 獲取遊戲歷史紀錄
-  getGameHistory() {
-    return this.gameHistory;
-  }
-  
-  // 將遊戲歷史轉換為文字描述
-  formatGameHistoryToText() {
-    if (this.gameHistory.length === 0) {
-      return '遊戲尚未開始或沒有歷史紀錄。';
-    }
-    
-    let formattedText = '【遊戲歷史紀錄】\n\n';
-    let currentDay = null;
-    let currentPhase = null;
-    
-    for (const entry of this.gameHistory) {
-      // 顯示日期和階段變化
-      if (entry.day !== currentDay || entry.phase !== currentPhase) {
-        formattedText += `\n=== 第 ${entry.day || '?'} 天 - ${entry.phase || '?'} ===\n\n`;
-        currentDay = entry.day;
-        currentPhase = entry.phase;
-      }
-      
-      // 添加訊息
-      formattedText += `${entry.role}: ${entry.message}\n`;
-    }
-    
-    return formattedText;
   }
 }
 

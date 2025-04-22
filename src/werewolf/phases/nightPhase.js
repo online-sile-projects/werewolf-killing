@@ -45,6 +45,7 @@ async function handleNightAction(game, roleKey) {
   if (players.length === 0) return;
   
   game.log.night(`${roleName}的回合...`);
+  game.recordGameMessage('系統', `${roleName}的回合開始`);
   
   // 查找人類玩家是否是此角色
   const humanPlayer = players.find(p => p.isHuman);
@@ -84,6 +85,8 @@ async function handleNightAction(game, roleKey) {
       }
     }
   }
+  
+  game.recordGameMessage('系統', `${roleName}的回合結束`);
 }
 
 /**
@@ -104,10 +107,12 @@ function resolveNightActions(game) {
     // 確認是否被女巫救或被守衛保護
     if ((game.state.witchSaved) || (game.state.guardProtected === killedPlayerId)) {
       game.log.night('狼人的獵物被救回來了！');
+      game.recordGameMessage('系統', '狼人的獵物被救回來了！');
     } else {
       killedPlayer.isAlive = false;
       nightDeaths.push(killedPlayer);
       nightDeathText += `${killedPlayer.name} 被狼人殺死了！\n`;
+      game.recordGameMessage('系統', `${killedPlayer.name} 被狼人殺死了！`);
     }
   }
   
@@ -122,12 +127,18 @@ function resolveNightActions(game) {
       if (!nightDeaths.some(p => p.id === poisonedPlayerId)) {
         nightDeaths.push(poisonedPlayer);
         nightDeathText += `${poisonedPlayer.name} 被毒死了！\n`;
+        game.recordGameMessage('系統', `${poisonedPlayer.name} 被女巫毒死了！`);
       }
     }
   }
   
   // 記錄夜晚結果
   game.state.nightKilled = nightDeaths.length > 0 ? nightDeaths.map(p => p.id) : null;
+  
+  // 如果沒有人死亡，記錄平安夜
+  if (nightDeaths.length === 0) {
+    game.recordGameMessage('系統', '今晚是平安夜，沒有玩家死亡。');
+  }
   
   // 重置投票結果
   game.state.werewolfVoteResult = null;
