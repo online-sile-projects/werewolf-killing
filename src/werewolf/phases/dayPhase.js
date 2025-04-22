@@ -10,13 +10,20 @@ import { handleHunterAbility, simulateHunterAbility } from '../roles/hunter.js';
 export async function handleDayDiscussionPhase(game) {
   game.log.day(`=== 第 ${game.state.day} 天白天 ===`);
   
+  // 記錄進入白天階段的訊息
+  game.recordGameMessage('系統', `進入第 ${game.state.day} 天白天討論階段。`);
+  
   // 宣佈昨晚死亡情況
   if (game.state.nightKilled && game.state.nightKilled.length > 0) {
     game.log.warning(`昨晚，以下玩家不幸遇難:`);
     
+    let deathMessage = `昨晚，以下玩家不幸遇難: `;
+    const deadPlayerNames = [];
+    
     for (const id of game.state.nightKilled) {
       const player = game.players.find(p => p.id === id);
       game.log.dead(`- ${player.name} (ID: ${player.id})`);
+      deadPlayerNames.push(player.name);
       
       // 使用 AI 生成死亡故事敘述
       if (game.settings.useAI && game.apiManager) {
@@ -24,6 +31,8 @@ export async function handleDayDiscussionPhase(game) {
         const story = await game.generateStoryWithAI(context);
         if (story) {
           game.log.story(story);
+          // 記錄死亡故事
+          game.recordGameMessage('旁白', story);
         }
       }
       
@@ -36,8 +45,16 @@ export async function handleDayDiscussionPhase(game) {
         }
       }
     }
+    
+    // 記錄死亡訊息
+    deathMessage += deadPlayerNames.join('、');
+    game.recordGameMessage('系統', deathMessage);
+    
   } else {
     game.log.success('昨晚是平安夜，沒有人死亡！');
+    
+    // 記錄平安夜訊息
+    game.recordGameMessage('系統', '昨晚是平安夜，沒有人死亡！');
     
     // 使用 AI 生成平安夜故事敘述
     if (game.settings.useAI && game.apiManager) {
@@ -45,6 +62,8 @@ export async function handleDayDiscussionPhase(game) {
       const story = await game.generateStoryWithAI(context);
       if (story) {
         game.log.story(story);
+        // 記錄故事敘述
+        game.recordGameMessage('旁白', story);
       }
     }
   }
@@ -60,6 +79,7 @@ export async function handleDayDiscussionPhase(game) {
   
   // 討論階段
   game.log.day('現在進入討論階段，請玩家們自由發言...');
+  game.recordGameMessage('系統', '現在進入討論階段，玩家們開始自由發言。');
   
   // 使用 AI 生成 NPC 自由發言
   if (game.settings.useAI && game.apiManager) {
@@ -71,9 +91,14 @@ export async function handleDayDiscussionPhase(game) {
       const response = await game.generateNpcResponseWithAI(player.id, context);
       if (response) {
         game.log.player(`${player.name}: ${response}`);
+        // 記錄 NPC 發言
+        game.recordGameMessage(`玩家-${player.id}`, response);
       } else {
         // 如果 AI 生成失敗，使用預設發言
-        game.log.player(`${player.name}: 我覺得大家還是謹慎行事比較好，注意觀察每個人的發言。`);
+        const defaultResponse = `我覺得大家還是謹慎行事比較好，注意觀察每個人的發言。`;
+        game.log.player(`${player.name}: ${defaultResponse}`);
+        // 記錄預設發言
+        game.recordGameMessage(`玩家-${player.id}`, defaultResponse);
       }
     }
   }
@@ -83,4 +108,5 @@ export async function handleDayDiscussionPhase(game) {
   // 進入投票階段
   game.state.phase = GAME_PHASES.VOTING;
   game.log.system('討論結束，進入投票階段');
+  game.recordGameMessage('系統', '討論結束，進入投票階段。');
 }

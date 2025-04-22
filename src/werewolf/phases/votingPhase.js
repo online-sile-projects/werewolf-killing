@@ -10,6 +10,9 @@ export async function handleVotingPhase(game) {
   game.log.day('現在進入投票階段，將決定驅逐一名玩家');
   game.state.votes = {};
   
+  // 記錄進入投票階段的訊息
+  game.recordGameMessage('系統', '現在進入投票階段，玩家們開始投票。');
+  
   // 人類玩家先投票
   const humanPlayer = game.getHumanPlayer();
   if (humanPlayer.isAlive) {
@@ -52,6 +55,7 @@ export async function handleVotingPhase(game) {
   } else if (maxVotedPlayers.length > 1) {
     // 平票情況，隨機選擇一個
     game.log.warning('投票出現平局！將隨機選擇一名玩家');
+    game.recordGameMessage('系統', '投票出現平局！將隨機選擇一名玩家');
     votedOutPlayerId = maxVotedPlayers[Math.floor(Math.random() * maxVotedPlayers.length)];
   }
   
@@ -75,12 +79,14 @@ export async function handlePlayerVote(game, player) {
   
   if (selectedIndex === -1) {
     game.log.warning('您選擇棄票!');
+    game.recordGameMessage(`玩家-${player.id}`, '棄票');
     return;
   }
   
   const selectedTarget = targets[selectedIndex];
   game.state.votes[player.id] = selectedTarget.id;
   game.log.action(`您投票驅逐 ${selectedTarget.name}`);
+  game.recordGameMessage(`玩家-${player.id}`, `投票驅逐 ${selectedTarget.name}`);
 }
 
 /**
@@ -97,6 +103,7 @@ export async function simulatePlayerVote(game, player) {
   game.state.votes[player.id] = selectedTarget.id;
   
   game.log.system(`${player.name} 進行了投票 (對你隱藏)`);
+  game.recordGameMessage(`玩家-${player.id}`, `投票驅逐 ${selectedTarget.name}`);
 }
 
 /**
@@ -105,6 +112,7 @@ export async function simulatePlayerVote(game, player) {
 export async function handleVoteResult(game, votedOutPlayerId) {
   if (votedOutPlayerId === null) {
     game.log.warning('投票結束，沒有玩家被驅逐');
+    game.recordGameMessage('系統', '投票結束，沒有玩家被驅逐');
     return;
   }
   
@@ -113,8 +121,12 @@ export async function handleVoteResult(game, votedOutPlayerId) {
   game.log.warning(`投票結束，${votedOutPlayer.name} 被驅逐出村莊`);
   votedOutPlayer.isAlive = false;
   
+  // 記錄驅逐結果
+  game.recordGameMessage('系統', `投票結束，${votedOutPlayer.name} 被驅逐出村莊`);
+  
   // 顯示身份
   game.log.role(`${votedOutPlayer.name} 的真實身份是: ${votedOutPlayer.role}`);
+  game.recordGameMessage('系統', `${votedOutPlayer.name} 的真實身份是: ${votedOutPlayer.role}`);
   
   // 獵人死亡時可以開槍
   if (votedOutPlayer.role === game.roles.HUNTER && votedOutPlayer.abilities.canShoot) {

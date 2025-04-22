@@ -558,4 +558,32 @@ export class WerewolfGame {
       return false;
     }
   }
+
+  /**
+   * 紀錄遊戲訊息到歷史紀錄
+   */
+  recordGameMessage(role, message) {
+    // 如果有 API 管理器，就記錄訊息
+    if (this.apiManager) {
+      this.apiManager.addGameMessage(
+        role, 
+        message,
+        this.state.phase,
+        this.state.day
+      );
+    }
+    
+    // 同時記錄到玩家的歷史紀錄
+    if (role.startsWith('玩家-')) {
+      const playerId = parseInt(role.split('-')[1]);
+      const player = this.players.find(p => p.id === playerId);
+      if (player && player.history) {
+        player.history.push({
+          day: this.state.day,
+          phase: this.state.phase,
+          message
+        });
+      }
+    }
+  }
 }

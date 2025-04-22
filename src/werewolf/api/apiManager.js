@@ -12,6 +12,9 @@ export class ApiManager {
       openai: ''
     };
     
+    // 遊戲歷史紀錄
+    this.gameHistory = [];
+    
     // 初始化
     this.init();
   }
@@ -417,6 +420,7 @@ export class ApiManager {
   
   // 獲取 LLM 回應
   async getResponse(prompt, systemInstruction = null) {
+    console.log(prompt, systemInstruction);
     // 根據當前提供商選擇不同的 API
     if (this.currentProvider === 'gemini') {
       return await this.callGeminiApi(prompt, systemInstruction);
@@ -435,8 +439,69 @@ export class ApiManager {
   
   // 狼人遊戲專用 - NPC 回應生成
   async generateNpcResponse(playerRole, gameContext, systemInstruction = null) {
+    // 基本角色指示
     const defaultInstruction = `你正在扮演狼人殺遊戲中的 ${playerRole} 角色，請根據遊戲情境生成符合角色特性的對話回應。`;
-    return await this.getResponse(gameContext, systemInstruction || defaultInstruction);
+    
+    // 結合遊戲歷史紀錄和當前上下文
+    let fullContext = gameContext;
+    
+    // 如果有遊戲歷史，添加到上下文中
+    if (this.gameHistory.length > 0) {
+      const historyText = this.formatGameHistoryToText();
+      fullContext = `【遊戲完整上下文】\n${historyText}\n\n【當前情境】\n${gameContext}`;
+    }
+    
+    // 用更豐富的上下文呼叫 API
+    return await this.getResponse(fullContext, systemInstruction || defaultInstruction);
+  }
+  
+  // 添加遊戲訊息到歷史紀錄
+  addGameMessage(role, message, phase, day) {
+    this.gameHistory.push({
+      timestamp: new Date().toISOString(),
+      role,
+      message,
+      phase,
+      day
+    });
+    console.log(`紀錄了一則來自 ${role} 的訊息`);
+  }
+  
+  // 清除遊戲歷史紀錄
+  clearGameHistory() {
+    this.gameHistory = [];
+    console.log('已清除遊戲歷史紀錄');
+    return true;
+  }
+  
+  // 獲取遊戲歷史紀錄
+  getGameHistory() {
+    return this.gameHistory;
+  }
+  
+  // 將遊戲歷史轉換為文字描述
+  formatGameHistoryToText() {
+    if (this.gameHistory.length === 0) {
+      return '遊戲尚未開始或沒有歷史紀錄。';
+    }
+    
+    let formattedText = '【遊戲歷史紀錄】\n\n';
+    let currentDay = null;
+    let currentPhase = null;
+    
+    for (const entry of this.gameHistory) {
+      // 顯示日期和階段變化
+      if (entry.day !== currentDay || entry.phase !== currentPhase) {
+        formattedText += `\n=== 第 ${entry.day || '?'} 天 - ${entry.phase || '?'} ===\n\n`;
+        currentDay = entry.day;
+        currentPhase = entry.phase;
+      }
+      
+      // 添加訊息
+      formattedText += `${entry.role}: ${entry.message}\n`;
+    }
+    
+    return formattedText;
   }
 }
 

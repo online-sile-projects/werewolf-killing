@@ -19,6 +19,9 @@ export async function handleNightPhase(game) {
   game.state.guardProtected = null;
   game.printGameStatus();
   
+  // 記錄進入夜晚階段的訊息
+  game.recordGameMessage('系統', `進入第 ${game.state.day} 天夜晚階段。`);
+  
   // 按角色順序執行夜晚行動
   for (const role of NIGHT_ACTIONS_ORDER) {
     await handleNightAction(game, role);
