@@ -291,17 +291,26 @@ export class WerewolfGame {
     const playerCount = parseInt(playerCountInput) || this.settings.playerCount;
     this.settings.playerCount = playerCount;
     
+    // 決定人類玩家的隨機位置（ID）
+    const humanId = Math.floor(Math.random() * playerCount) + 1; // 1 到 playerCount 之間的隨機數
+    this.humanPlayerId = humanId;
+    
     // 創建人類玩家
     const humanName = await this.ask('請輸入您的名字: ');
-    const humanPlayer = createPlayer(1, humanName || '玩家1', true);
+    const humanPlayer = createPlayer(humanId, humanName || `玩家${humanId}`, true);
     this.players.push(humanPlayer);
-    this.humanPlayerId = 1;
     
     // 創建AI玩家
-    for (let i = 2; i <= this.settings.playerCount; i++) {
+    for (let i = 1; i <= this.settings.playerCount; i++) {
+      // 跳過人類玩家的 ID
+      if (i === humanId) continue;
+      
       const aiPlayer = createPlayer(i, generatePlayerName(), false);
       this.players.push(aiPlayer);
     }
+    
+    // 依照 ID 排序玩家，方便顯示
+    this.players.sort((a, b) => a.id - b.id);
     
     // 輸出所有玩家的名稱和ID以便確認
     this.log.success(`已創建 ${this.players.length} 名玩家:`);
