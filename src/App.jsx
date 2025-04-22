@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import MyTemplate from './template/index.js'
+import './werewolf/index.js'
 
 function App() {
   return (
