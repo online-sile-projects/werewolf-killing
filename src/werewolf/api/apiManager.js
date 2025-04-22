@@ -92,6 +92,21 @@ export class ApiManager {
     return true;
   }
   
+  // 添加遊戲訊息到歷史紀錄 (與 WerewolfGame.recordGameMessage 呼叫相匹配)
+  addGameMessage(role, message, phase, day) {
+    this.gameHistory.addMessage(role, message, phase, day);
+  }
+  
+  // 清除遊戲歷史紀錄
+  clearGameHistory() {
+    return this.gameHistory.clear();
+  }
+  
+  // 獲取遊戲歷史紀錄
+  getGameHistory() {
+    return this.gameHistory.getAllRecords();
+  }
+  
   // 測試 API 連線（增加重試機制）
   async testApiConnection(provider = null) {
     provider = provider || this.currentProvider;
