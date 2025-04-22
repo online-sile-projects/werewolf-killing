@@ -166,6 +166,51 @@ export const werewolfTests = {
     
     console.log('%c遊戲歷史紀錄功能測試完成！', 'color: #00cc66; font-weight: bold;');
     return allHistory;
+  },
+  
+  // 測試 AI 啟用功能
+  testAIEnabled: () => {
+    console.log('%c測試 AI 啟用功能...', 'color: #0099ff; font-weight: bold;');
+    const tester = new TestWorkflow();
+    tester.initializeGame();
+    
+    // 預設值檢查
+    console.log('檢查 AI 功能預設值...');
+    if (tester.game.settings.useAI === false) {
+      console.log('%c✓ AI 功能預設為停用', 'color: #00cc66;');
+    } else {
+      console.error('❌ AI 功能預設值不正確');
+    }
+    
+    // 測試啟用 AI
+    console.log('測試啟用 AI 功能...');
+    tester.game.setAIEnabled(true);
+    if (tester.game.settings.useAI === true) {
+      console.log('%c✓ AI 功能成功啟用', 'color: #00cc66;');
+    } else {
+      console.error('❌ AI 功能啟用失敗');
+    }
+    
+    // 測試停用 AI
+    console.log('測試停用 AI 功能...');
+    tester.game.setAIEnabled(false);
+    if (tester.game.settings.useAI === false) {
+      console.log('%c✓ AI 功能成功停用', 'color: #00cc66;');
+    } else {
+      console.error('❌ AI 功能停用失敗');
+    }
+    
+    // 測試帶有無效參數
+    console.log('測試無效參數...');
+    try {
+      tester.game.setAIEnabled('不是布林值');
+      console.error('❌ 應該拒絕非布林值的參數');
+    } catch (e) {
+      console.log('%c✓ 正確拒絕非布林值的參數', 'color: #00cc66;');
+    }
+    
+    console.log('%c測試 AI 啟用功能完成！', 'color: #00cc66; font-weight: bold;');
+    return true;
   }
 };
 

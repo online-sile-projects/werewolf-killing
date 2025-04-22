@@ -529,22 +529,17 @@ export class WerewolfGame {
   }
   
   /**
-   * 啟用或禁用 AI 功能
+   * 設定 AI 功能的啟用狀態
+   * @param {boolean} enabled - 是否啟用 AI 功能
+   * @returns {boolean} - 目前的 AI 啟用狀態
    */
   setAIEnabled(enabled) {
-    if (!this.apiManager && enabled) {
-      this.log.warning('未設定 API 管理器，無法啟用 AI 功能。');
-      return false;
+    if (typeof enabled !== 'boolean') {
+      throw new Error('AI 啟用狀態必須是布林值');
     }
-    
-    // 如果要啟用 AI，先測試連線
-    if (enabled) {
-      this.testAIConnection();
-    }
-    
     this.settings.useAI = enabled;
-    this.log.system(`已${enabled ? '啟用' : '禁用'} AI 輔助功能`);
-    return true;
+    this.log.info(`AI 功能已${enabled ? '啟用' : '停用'}`);
+    return this.settings.useAI;
   }
   
   /**

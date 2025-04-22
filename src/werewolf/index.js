@@ -26,7 +26,8 @@ window.WerewolfTest = {
   testApiConnection: werewolfTests.testApiConnection,
   testRoleDistribution: werewolfTests.testRoleDistribution,
   testGameOver: werewolfTests.testGameOver,
-  testGameHistory: werewolfTests.testGameHistory
+  testGameHistory: werewolfTests.testGameHistory,
+  testAIEnabled: werewolfTests.testAIEnabled
 };
 
 // 確保在控制台中可以直接訪問
@@ -52,5 +53,6 @@ console.log('%c測試遊戲設置: WerewolfTest.testGameSetup()', 'color: #9966f
 console.log('%c測試角色分配: WerewolfTest.testRoleDistribution()', 'color: #9966ff;');
 console.log('%c測試遊戲結束條件: WerewolfTest.testGameOver()', 'color: #9966ff;');
 console.log('%c測試遊戲歷史紀錄功能: WerewolfTest.testGameHistory()', 'color: #9966ff;');
+console.log('%c測試 AI 啟用功能: WerewolfTest.testAIEnabled()', 'color: #9966ff;');
 
 export default window.Werewolf;
