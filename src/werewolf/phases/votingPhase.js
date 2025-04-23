@@ -102,7 +102,7 @@ export async function simulatePlayerVote(game, player) {
   const selectedTarget = targets[Math.floor(Math.random() * targets.length)];
   game.state.votes[player.id] = selectedTarget.id;
   
-  game.log.system(`${player.name} 進行了投票 (對你隱藏)`);
+  game.log.action(`${player.name} 投票驅逐 ${selectedTarget.name}`);
   game.recordGameMessage(`玩家-${player.id}`, `投票驅逐 ${selectedTarget.name}`);
 }
 
