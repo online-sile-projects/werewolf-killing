@@ -1,0 +1,173 @@
+/* 輸入面板樣式 */
+.input-panel {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  animation: slideUp 0.4s ease-in-out;
+}
+
+.input-panel.inactive {
+  opacity: 0.6;
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.input-message {
+  color: #95a5a6;
+  font-style: italic;
+  text-align: center;
+}
+
+.question {
+  background-color: rgba(52, 152, 219, 0.1);
+  border-left: 3px solid #3498db;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+}
+
+.question p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* 是/否選項 */
+.yes-no-options {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.yes-btn,
+.no-btn {
+  flex: 1;
+  padding: 0.8rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.yes-btn {
+  background-color: #2ecc71;
+  color: white;
+}
+
+.yes-btn:hover {
+  background-color: #27ae60;
+}
+
+.no-btn {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.no-btn:hover {
+  background-color: #c0392b;
+}
+
+/* 選項列表 */
+.option-form {
+  margin-bottom: 1rem;
+}
+
+.options-list {
+  margin-bottom: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.option-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.option-item input[type="radio"] {
+  margin-right: 0.8rem;
+}
+
+.option-item label {
+  flex: 1;
+  cursor: pointer;
+}
+
+.submit-option-btn {
+  width: 100%;
+  padding: 0.8rem;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.submit-option-btn:hover {
+  background-color: #2980b9;
+}
+
+.submit-option-btn:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+/* 文字輸入 */
+.text-input-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.text-input {
+  flex: 1;
+  padding: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #f0f0f0;
+  font-size: 1rem;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+.submit-text-btn {
+  padding: 0 1.5rem;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.submit-text-btn:hover {
+  background-color: #2980b9;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

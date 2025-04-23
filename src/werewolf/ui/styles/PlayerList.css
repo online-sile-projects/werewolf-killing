@@ -1,0 +1,104 @@
+/* 玩家列表樣式 */
+.player-list {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.player-list h2 {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e67e22;
+  text-align: center;
+}
+
+.loading-players {
+  text-align: center;
+  padding: 2rem 0;
+  color: #aaa;
+  font-style: italic;
+}
+
+.player-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  padding: 0.8rem;
+  margin-bottom: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  transition: background-color 0.3s;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.player-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.player-item.dead {
+  opacity: 0.6;
+  text-decoration: line-through;
+  background-color: rgba(255, 0, 0, 0.05);
+}
+
+.player-item.human {
+  background-color: rgba(52, 152, 219, 0.1);
+  border-left: 3px solid #3498db;
+}
+
+.player-status {
+  margin-right: 0.8rem;
+}
+
+.alive-indicator {
+  color: #2ecc71;
+  font-size: 1.2rem;
+}
+
+.dead-indicator {
+  color: #e74c3c;
+  font-size: 1.2rem;
+}
+
+.player-info {
+  flex: 1;
+}
+
+.player-name {
+  font-weight: bold;
+  margin-bottom: 0.2rem;
+}
+
+.player-id {
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+.player-role {
+  background-color: rgba(230, 126, 34, 0.2);
+  color: #e67e22;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

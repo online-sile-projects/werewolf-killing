@@ -1,0 +1,65 @@
+/* 階段指示器樣式 */
+.phase-indicator {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s;
+  animation: pulse 2s infinite alternate;
+}
+
+.phase-icon {
+  font-size: 1.8rem;
+  margin-right: 1rem;
+}
+
+.phase-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.phase-day {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-bottom: 0.2rem;
+}
+
+.phase-name {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+/* 不同階段的樣式 */
+.phase-night {
+  background-color: rgba(44, 62, 80, 0.3);
+  border-left: 4px solid #34495e;
+}
+
+.phase-day {
+  background-color: rgba(230, 126, 34, 0.3);
+  border-left: 4px solid #e67e22;
+}
+
+.phase-voting {
+  background-color: rgba(155, 89, 182, 0.3);
+  border-left: 4px solid #9b59b6;
+}
+
+.phase-end {
+  background-color: rgba(231, 76, 60, 0.3);
+  border-left: 4px solid #e74c3c;
+}
+
+.phase-default {
+  background-color: rgba(52, 152, 219, 0.3);
+  border-left: 4px solid #3498db;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(255, 255, 255, 0);
+  }
+}
