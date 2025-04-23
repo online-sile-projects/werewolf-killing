@@ -471,6 +471,118 @@ export class ApiManager {
     // 用更豐富的上下文呼叫 API
     return await this.getResponse(fullContext, systemInstruction || defaultInstruction);
   }
+  
+  // 狼人遊戲專用 - AI 決策生成
+  async generateAiDecision(playerRole, decisionType, options, gameContext, playerNumber = null, systemInstruction = null) {
+    // 基本角色決策指示
+    const roleDescription = playerNumber ? `${playerRole} 玩家 ${playerNumber} 號` : playerRole;
+    
+    // 根據決策類型調整指示詞
+    let defaultInstruction = '';
+    
+    switch (decisionType) {
+      case 'kill': // 狼人刀人
+        defaultInstruction = `你正在扮演狼人殺遊戲中的 ${roleDescription}，請決定要擊殺哪一位玩家。回傳格式必須是 JSON: {"targetId": 數字}`;
+        break;
+      case 'save': // 女巫救人
+        defaultInstruction = `你正在扮演狼人殺遊戲中的 ${roleDescription}，請決定是否要使用解藥救活即將被狼人殺死的玩家。回傳格式必須是 JSON: {"save": true/false}`;
+        break;
+      case 'poison': // 女巫毒人
+        defaultInstruction = `你正在扮演狼人殺遊戲中的 ${roleDescription}，請決定是否要使用毒藥殺死某位玩家。如果決定使用，請指定目標玩家。回傳格式必須是 JSON: {"poison": true/false, "targetId": 數字或null}`;
+        break;
+      case 'guard': // 守衛守人
+        defaultInstruction = `你正在扮演狼人殺遊戲中的 ${roleDescription}，請決定要保護哪一位玩家。回傳格式必須是 JSON: {"targetId": 數字}`;
+        break;
+      case 'check': // 預言家查驗
+        defaultInstruction = `你正在扮演狼人殺遊戲中的 ${roleDescription}，請決定要查驗哪一位玩家的身份。回傳格式必須是 JSON: {"targetId": 數字}`;
+        break;
+      case 'vote': // 投票
+        defaultInstruction = `你正在扮演狼人殺遊戲中的 ${roleDescription}，請決定要投票驅逐哪一位玩家。回傳格式必須是 JSON: {"targetId": 數字}`;
+        break;
+      default:
+        defaultInstruction = `你正在扮演狼人殺遊戲中的 ${roleDescription}，請根據遊戲情境做出決策。回傳格式必須是 JSON，包含你的決策結果。`;
+    }
+    
+    // 將可選選項轉換為文字描述
+    const optionsText = Array.isArray(options) 
+      ? `可選目標：\n${options.map(opt => 
+          typeof opt === 'object' 
+            ? `ID: ${opt.id}, 名稱: ${opt.name}${opt.role ? ', 角色: ' + opt.role : ''}${opt.isAlive === false ? ' (已死亡)' : ''}`
+            : opt
+        ).join('\n')}`
+      : `選項：${JSON.stringify(options)}`;
+    
+    // 結合遊戲歷史紀錄和當前上下文
+    let fullContext = `${gameContext}\n\n${optionsText}`;
+    
+    // 如果有遊戲歷史，添加到上下文中
+    if (this.gameHistory.getAllRecords().length > 0) {
+      const historyText = this.gameHistory.formatToText();
+      fullContext = `【遊戲完整上下文】\n${historyText}\n\n【當前情境】\n${gameContext}\n\n${optionsText}`;
+    }
+    
+    // 用更豐富的上下文呼叫 API
+    const response = await this.getResponse(fullContext, systemInstruction || defaultInstruction);
+    
+    // 處理回應結果，嘗試解析為有效的決策
+    if (response && response.response) {
+      try {
+        // 如果回應已經是物件（表示已成功解析為 JSON），直接返回
+        if (typeof response.response === 'object') {
+          return response.response;
+        }
+        
+        // 嘗試從回應文字中解析 JSON
+        const responseText = response.response;
+        // 尋找 JSON 格式的內容 (從 { 到 })
+        const jsonMatch = responseText.match(/\{[^]*\}/);
+        
+        if (jsonMatch) {
+          const jsonString = jsonMatch[0];
+          return JSON.parse(jsonString);
+        } else {
+          // 如果無法解析出 JSON，嘗試從文字中提取決策信息
+          if (decisionType === 'kill' || decisionType === 'guard' || decisionType === 'check' || decisionType === 'vote') {
+            // 嘗試匹配 ID 數字
+            const idMatch = responseText.match(/ID[:\s]*(\d+)|玩家[:\s]*(\d+)|選擇[:\s]*(\d+)|(\d+)\s*號/);
+            if (idMatch) {
+              const id = parseInt(idMatch[1] || idMatch[2] || idMatch[3] || idMatch[4]);
+              return { targetId: id };
+            }
+          } else if (decisionType === 'save' || decisionType === 'poison') {
+            // 嘗試匹配是/否決策
+            const yesMatch = responseText.match(/是|同意|使用|救活|毒死|選擇使用/);
+            const noMatch = responseText.match(/否|不|放棄|不使用|不救|不毒/);
+            
+            if (decisionType === 'save') {
+              return { save: yesMatch !== null && noMatch === null };
+            } else {
+              // 對於毒藥，如果決定使用，嘗試找出目標 ID
+              const usePoison = yesMatch !== null && noMatch === null;
+              if (usePoison) {
+                const idMatch = responseText.match(/ID[:\s]*(\d+)|玩家[:\s]*(\d+)|選擇[:\s]*(\d+)|(\d+)\s*號/);
+                const targetId = idMatch ? parseInt(idMatch[1] || idMatch[2] || idMatch[3] || idMatch[4]) : null;
+                return { poison: true, targetId };
+              } else {
+                return { poison: false, targetId: null };
+              }
+            }
+          }
+        }
+        
+        // 如果無法解析出有效的決策，返回一個錯誤
+        console.warn('無法從 AI 回應中解析出有效的決策:', responseText);
+        return { error: '無法解析決策', raw: responseText };
+      } catch (error) {
+        console.error('解析 AI 決策時發生錯誤:', error);
+        return { error: error.message, raw: response.response };
+      }
+    } else if (response && response.error) {
+      return { error: response.error };
+    } else {
+      return { error: '未獲得有效回應' };
+    }
+  }
 }
 
 // 建立並匯出 ApiManager 類別
