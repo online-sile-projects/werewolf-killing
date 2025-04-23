@@ -454,9 +454,10 @@ export class ApiManager {
   }
   
   // 狼人遊戲專用 - NPC 回應生成
-  async generateNpcResponse(playerRole, gameContext, systemInstruction = null) {
+  async generateNpcResponse(playerRole, gameContext, playerNumber = null, systemInstruction = null) {
     // 基本角色指示
-    const defaultInstruction = `你正在扮演狼人殺遊戲中的 ${playerRole} 角色，請根據遊戲情境生成符合角色特性的對話回應。`;
+    const roleDescription = playerNumber ? `${playerRole} 玩家 ${playerNumber} 號` : playerRole;
+    const defaultInstruction = `你正在扮演狼人殺遊戲中的 ${roleDescription} 角色，請根據遊戲情境生成符合角色特性的對話回應。`;
     
     // 結合遊戲歷史紀錄和當前上下文
     let fullContext = gameContext;

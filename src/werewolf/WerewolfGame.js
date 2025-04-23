@@ -517,7 +517,7 @@ export class WerewolfGame {
     }
     
     try {
-      const response = await this.apiManager.generateNpcResponse(player.role, context);
+      const response = await this.apiManager.generateNpcResponse(player.role, context, player.id);
       if (response && response.response) {
         return response.response;
       }

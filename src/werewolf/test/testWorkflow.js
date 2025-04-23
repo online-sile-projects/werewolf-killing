@@ -7,7 +7,7 @@ import ApiManager from '../api/apiManager.js';
 
 // 測試流程控制器
 export class TestWorkflow {
-  constructor() {
+  constructor(config = {}) {
     this.game = null;
     this.apiManager = null;
     this.autoAnswers = [];  // 自動回答佇列
@@ -16,7 +16,8 @@ export class TestWorkflow {
       playerCount: 6,      // 玩家數量
       playerName: '測試者', // 玩家名稱
       testSpeed: 'fast',   // 測試速度 'fast', 'normal', 'slow'
-      mockApiResponses: true // 模擬 API 回應
+      mockApiResponses: true, // 模擬 API 回應
+      ...config  // 允許覆寫預設設定
     };
     this.speedDelays = {
       fast: 300,
@@ -81,9 +82,11 @@ export class TestWorkflow {
     // 將 API 管理器連接到遊戲
     this.game.apiManager = this.apiManager;
     
-    // 模擬 API 回應
+    // 根據設定決定是使用模擬 API 還是真實 API
     if (this.testConfig.mockApiResponses) {
       this.mockApiResponses();
+    } else {
+      this.setupRealApi();
     }
     
     // 覆寫遊戲的 ask 方法以自動回答問題
@@ -103,8 +106,8 @@ export class TestWorkflow {
       return { response: `這是一個模擬的故事敘述：${context}` };
     };
     
-    this.apiManager.generateNpcResponse = async (playerRole, context) => {
-      return { response: `這是 ${playerRole} 角色的模擬回應。` };
+    this.apiManager.generateNpcResponse = async (playerRole, context, playerNumber = null) => {
+      return { response: `這是 ${playerNumber ? `${playerRole} 玩家 ${playerNumber} 號` : playerRole} 角色的模擬回應。` };
     };
     
     this.apiManager.testApiConnection = async () => {
@@ -115,6 +118,37 @@ export class TestWorkflow {
     this.game.settings.useAI = true;
     
     this.logSuccess('API 回應模擬設定完成');
+  }
+  
+  /**
+   * 設定使用真實 API
+   */
+  setupRealApi() {
+    this.logInfo('設定使用真實 API');
+    
+    // 確認 API 管理器已準備好
+    if (!this.apiManager) {
+      this.apiManager = new ApiManager();
+      this.game.apiManager = this.apiManager;
+    }
+    
+    // 測試 API 連線
+    this.apiManager.testApiConnection()
+      .then(result => {
+        if (result.success) {
+          this.logSuccess('API 連線測試成功');
+        } else {
+          this.logError('API 連線測試失敗');
+        }
+      })
+      .catch(error => {
+        this.logError(`API 連線測試出錯: ${error.message}`);
+      });
+    
+    // 啟用 AI 功能
+    this.game.settings.useAI = true;
+    
+    this.logSuccess('真實 API 設定完成');
   }
   
   /**
@@ -289,11 +323,11 @@ export class TestWorkflow {
 }
 
 // 建立測試流程的執行函式
-export async function runWerewolfTest() {
+export async function runWerewolfTest(config = {}) {
   console.log('%c開始狼人殺遊戲測試流程...', 'color: #0099ff; font-weight: bold; font-size: 14px;');
   
-  // 建立測試流程物件
-  const tester = new TestWorkflow();
+  // 建立測試流程物件，並傳入設定
+  const tester = new TestWorkflow(config);
   
   // 執行測試
   const result = await tester.startTest();

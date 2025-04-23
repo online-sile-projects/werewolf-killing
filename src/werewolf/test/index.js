@@ -10,9 +10,41 @@ export { runWerewolfTest, TestWorkflow };
 // 建立測試函式
 export const werewolfTests = {
   // 執行完整測試流程
-  runFullTest: async () => {
+  runFullTest: async (enableAI = true) => {
     console.log('%c開始執行完整狼人殺測試流程...', 'color: #0099ff; font-weight: bold;');
-    return await runWerewolfTest();
+    
+    // 先測試 AI 啟用功能
+    console.log('%c===== 第一步：測試 AI 設定功能 =====', 'color: #ff6600; font-weight: bold;');
+    werewolfTests.testAIEnabled();
+    
+    // 再執行標準測試流程
+    console.log('%c===== 第二步：測試標準遊戲功能 =====', 'color: #ff6600; font-weight: bold;');
+    const standardTestResult = await runWerewolfTest();
+    
+    // 特別執行一次帶有 AI 設定的測試
+    console.log('%c===== 第三步：測試帶有 AI 的遊戲功能 =====', 'color: #ff6600; font-weight: bold;');
+    console.log(`%c執行${enableAI ? '啟用' : '停用'} AI 的遊戲流程測試...`, 'color: #9966ff;');
+    
+    const tester = new TestWorkflow();
+    tester.initializeGame();
+    
+    // 根據參數設定 AI 功能
+    tester.game.setAIEnabled(enableAI);
+    console.log(`%c✓ 已${enableAI ? '啟用' : '停用'} AI 功能進行測試`, 'color: #00cc66;');
+    
+    // 設置自動回答
+    tester.addAutoAnswer('6'); // 玩家數量
+    tester.addAutoAnswer(`AI${enableAI ? '啟用' : '停用'}測試者`); // 玩家名稱
+    
+    // 測試 AI 啟用狀態是否正確
+    if (tester.game.settings.useAI === enableAI) {
+      console.log(`%c✓ 遊戲已正確設定 AI ${enableAI ? '啟用' : '停用'}狀態`, 'color: #00cc66;');
+    } else {
+      console.error(`❌ 遊戲 AI 設定狀態不正確，應為 ${enableAI ? '啟用' : '停用'}`);
+    }
+    
+    console.log('%c完整測試流程（含 AI 功能）完成！', 'color: #00cc66; font-weight: bold;');
+    return { standardTestResult, aiEnabled: tester.game.settings.useAI };
   },
   
   // 測試遊戲設置
