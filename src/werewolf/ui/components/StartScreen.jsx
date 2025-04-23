@@ -5,12 +5,13 @@ import '../styles/StartScreen.css';
  * 遊戲開始畫面元件
  * 顯示遊戲標題、規則說明和開始遊戲設定
  */
-function StartScreen({ onStartGame, defaultPlayerCount = 8, defaultPlayerName = '', defaultUseAI = false }) {
+function StartScreen({ onStartGame, defaultPlayerCount = 8, defaultPlayerName = '', defaultUseAI = false, defaultGeminiKey = '' }) {
   // 設定狀態
   const [showRules, setShowRules] = useState(false);
   const [playerCount, setPlayerCount] = useState(defaultPlayerCount);
   const [playerName, setPlayerName] = useState(defaultPlayerName);
   const [useAI, setUseAI] = useState(defaultUseAI);
+  const [geminiKey, setGeminiKey] = useState(defaultGeminiKey);
 
   // 處理遊戲開始
   const handleStartGame = (e) => {
@@ -22,11 +23,18 @@ function StartScreen({ onStartGame, defaultPlayerCount = 8, defaultPlayerName = 
       return;
     }
     
+    // 如果啟用 AI 但未提供 Gemini API Key
+    if (useAI && !geminiKey.trim()) {
+      alert('啟用 AI 功能時，請提供 Gemini API Key！');
+      return;
+    }
+    
     // 傳送設定到父元件
     onStartGame({
       playerCount: playerCount,
       playerName: playerName,
-      useAI: useAI
+      useAI: useAI,
+      geminiKey: geminiKey
     });
   };
 
@@ -74,6 +82,19 @@ function StartScreen({ onStartGame, defaultPlayerCount = 8, defaultPlayerName = 
               />
               <label htmlFor="useAI">啟用 AI 功能</label>
             </div>
+
+            {useAI && (
+              <div className="form-group">
+                <label htmlFor="geminiKey">Gemini API Key</label>
+                <input 
+                  type="text" 
+                  id="geminiKey" 
+                  value={geminiKey} 
+                  onChange={e => setGeminiKey(e.target.value)}
+                  placeholder="請輸入您的 Gemini API Key"
+                />
+              </div>
+            )}
 
             <div className="actions">
               <button type="submit" className="start-game-btn">開始遊戲</button>

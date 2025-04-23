@@ -301,11 +301,18 @@ export class WerewolfGame {
     this.players.push(humanPlayer);
     
     // 創建AI玩家
+    const usedNames = [humanPlayer.name]; // 記錄已使用的名稱，包括人類玩家的名稱
+    
     for (let i = 1; i <= this.settings.playerCount; i++) {
       // 跳過人類玩家的 ID
       if (i === humanId) continue;
       
-      const aiPlayer = createPlayer(i, generatePlayerName(), false);
+      // 產生不重複的名稱
+      const aiPlayerName = generatePlayerName(usedNames);
+      const aiPlayer = createPlayer(i, aiPlayerName, false);
+      
+      // 將名稱加入已使用列表
+      usedNames.push(aiPlayerName);
       this.players.push(aiPlayer);
     }
     
