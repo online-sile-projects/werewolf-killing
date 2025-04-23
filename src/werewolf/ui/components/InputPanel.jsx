@@ -19,7 +19,7 @@ function InputPanel({ question, options = [], isWaiting, onSubmit }) {
   // 處理文字輸入提交
   const handleTextSubmit = (e) => {
     e.preventDefault();
-    if (answer.trim() && onSubmit) {
+    if (onSubmit) {
       onSubmit(answer);
       setAnswer('');
     }
