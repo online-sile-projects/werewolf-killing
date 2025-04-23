@@ -454,7 +454,7 @@ export class ApiManager {
   }
   
   // 狼人遊戲專用 - NPC 回應生成
-  async generateNpcResponse(playerRole, gameContext, playerNumber = null, systemInstruction = null) {
+  async generateNpcResponse(playerRole, gameContext, playerNumber = null, systemInstruction = null, gameStatus = null) {
     // 基本角色指示
     const roleDescription = playerNumber ? `${playerRole} 玩家 ${playerNumber} 號` : playerRole;
     const defaultInstruction = `你正在扮演狼人殺遊戲中的 ${roleDescription} 角色，請根據遊戲情境生成符合角色特性的對話回應。`;
@@ -468,12 +468,18 @@ export class ApiManager {
       fullContext = `【遊戲完整上下文】\n${historyText}\n\n【當前情境】\n${gameContext}`;
     }
     
+    // 添加遊戲狀態資訊（如果有提供）
+    if (gameStatus) {
+      const statusText = JSON.stringify(gameStatus, null, 2);
+      fullContext = `${fullContext}\n\n【遊戲狀態】\n${statusText}`;
+    }
+    
     // 用更豐富的上下文呼叫 API
     return await this.getResponse(fullContext, systemInstruction || defaultInstruction);
   }
   
   // 狼人遊戲專用 - AI 決策生成
-  async generateAiDecision(playerRole, decisionType, options, gameContext, playerNumber = null, systemInstruction = null) {
+  async generateAiDecision(playerRole, decisionType, options, gameContext, playerNumber = null, systemInstruction = null, gameStatus = null) {
     // 基本角色決策指示
     const roleDescription = playerNumber ? `${playerRole} 玩家 ${playerNumber} 號` : playerRole;
     
@@ -519,6 +525,12 @@ export class ApiManager {
     if (this.gameHistory.getAllRecords().length > 0) {
       const historyText = this.gameHistory.formatToText();
       fullContext = `【遊戲完整上下文】\n${historyText}\n\n【當前情境】\n${gameContext}\n\n${optionsText}`;
+    }
+    
+    // 添加遊戲狀態資訊（如果有提供）
+    if (gameStatus) {
+      const statusText = JSON.stringify(gameStatus, null, 2);
+      fullContext = `${fullContext}\n\n【遊戲狀態】\n${statusText}`;
     }
     
     // 用更豐富的上下文呼叫 API

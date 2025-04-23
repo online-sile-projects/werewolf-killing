@@ -516,8 +516,26 @@ export class WerewolfGame {
       return null;
     }
     
+    // 構建遊戲狀態資訊
+    const gameStatus = {
+      phase: this.state.phase,
+      day: this.state.day,
+      alivePlayers: this.getAlivePlayers().map(p => ({
+        id: p.id,
+        name: p.name,
+        role: player.role === this.roles.WEREWOLF && p.role === this.roles.WEREWOLF ? p.role : '未知'
+      })),
+      deadPlayers: this.players.filter(p => !p.isAlive).map(p => ({
+        id: p.id,
+        name: p.name,
+        role: p.role
+      })),
+      playerRole: player.role,
+      playerId: player.id
+    };
+    
     try {
-      const response = await this.apiManager.generateNpcResponse(player.role, context, player.id);
+      const response = await this.apiManager.generateNpcResponse(player.role, context, player.id, null, gameStatus);
       if (response && response.response) {
         return response.response;
       }
