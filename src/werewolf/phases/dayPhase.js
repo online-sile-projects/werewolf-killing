@@ -78,29 +78,58 @@ export async function handleDayDiscussionPhase(game) {
   }
   
   // 討論階段
-  game.log.day('現在進入討論階段，請玩家們自由發言...');
-  game.recordGameMessage('系統', '現在進入討論階段，玩家們開始自由發言。');
+  game.log.day('現在進入討論階段，請玩家們依序發言...');
+  game.recordGameMessage('系統', '現在進入討論階段，玩家們依序開始發言。');
   
-  // 使用 AI 生成 NPC 自由發言
-  if (game.settings.useAI && game.apiManager) {
-    game.log.info('NPC 玩家正在發言中...');
+  // 取得所有活著的玩家並按 ID 排序以確保發言順序
+  const alivePlayers = game.getAlivePlayers().sort((a, b) => a.id - b.id);
+  
+  // 依照玩家 ID 順序依次發言
+  for (const player of alivePlayers) {
+    game.log.system(`輪到 ${player.name} (ID: ${player.id}) 發言...`);
     
-    const alivePlayers = game.getAlivePlayers().filter(p => !p.isHuman);
-    for (const player of alivePlayers) {
-      const context = `這是遊戲的第 ${game.state.day} 天白天討論階段，請您以狼人殺遊戲中的 ${player.role} 角色身份，根據當前情況發表簡短的發言。`;
-      const response = await game.generateNpcResponseWithAI(player.id, context);
-      if (response) {
-        game.log.player(`${player.name}: ${response}`);
-        // 記錄 NPC 發言
-        game.recordGameMessage(`玩家-${player.id}`, response);
+    if (player.isHuman) {
+      // 人類玩家發言處理
+      game.log.system('現在是您的發言時間...');
+      game.log.info('您可以發表對遊戲局勢的看法或懷疑，或是為自己辯護。');
+      
+      const userSpeech = await game.ask('請輸入您的發言 (直接按 Enter 跳過發言)：');
+      
+      if (userSpeech && userSpeech.trim() !== '') {
+        game.log.player(`${player.name}: ${userSpeech}`);
+        // 記錄人類玩家發言
+        game.recordGameMessage(`玩家-${player.id}`, userSpeech);
       } else {
-        // 如果 AI 生成失敗，使用預設發言
-        const defaultResponse = `我覺得大家還是謹慎行事比較好，注意觀察每個人的發言。`;
+        game.log.warning('您選擇了沉默...');
+        game.recordGameMessage(`玩家-${player.id}`, '（沉默不語）');
+      }
+    } else {
+      // NPC 玩家發言處理
+      if (game.settings.useAI && game.apiManager) {
+        const context = `這是遊戲的第 ${game.state.day} 天白天討論階段，請您以狼人殺遊戲中的 ${player.role} 角色身份，根據當前情況發表簡短的發言。`;
+        const response = await game.generateNpcResponseWithAI(player.id, context);
+        if (response) {
+          game.log.player(`${player.name}: ${response}`);
+          // 記錄 NPC 發言
+          game.recordGameMessage(`玩家-${player.id}`, response);
+        } else {
+          // 如果 AI 生成失敗，使用預設發言
+          const defaultResponse = `我覺得大家還是謹慎行事比較好，注意觀察每個人的發言。`;
+          game.log.player(`${player.name}: ${defaultResponse}`);
+          // 記錄預設發言
+          game.recordGameMessage(`玩家-${player.id}`, defaultResponse);
+        }
+      } else {
+        // 不使用 AI 時的預設發言
+        const defaultResponse = `我認為我們需要多觀察，找出可疑的人。`;
         game.log.player(`${player.name}: ${defaultResponse}`);
         // 記錄預設發言
         game.recordGameMessage(`玩家-${player.id}`, defaultResponse);
       }
     }
+    
+    // 每位玩家發言後短暫暫停，讓遊戲節奏更自然
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
   
   await game.ask('按Enter進入投票階段...');
