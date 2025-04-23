@@ -85,7 +85,7 @@ function StartScreen({ onStartGame, defaultPlayerCount = 8, defaultPlayerName = 
 
             {useAI && (
               <div className="form-group">
-                <label htmlFor="geminiKey">Gemini API Key</label>
+                <label htmlFor="geminiKey">Gemini API Key <small>(明文顯示)</small></label>
                 <input 
                   type="text" 
                   id="geminiKey" 

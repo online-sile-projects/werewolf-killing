@@ -87,6 +87,52 @@
   margin: 0;
 }
 
+.api-input-container {
+  display: flex;
+  gap: 10px;
+}
+
+.api-input-container input {
+  flex: 1;
+}
+
+.test-api-btn {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  white-space: nowrap;
+}
+
+.test-api-btn:hover:not(:disabled) {
+  background-color: #2980b9;
+}
+
+.test-api-btn:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+.api-test-message {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.api-test-message.success {
+  background-color: rgba(46, 204, 113, 0.2);
+  color: #27ae60;
+}
+
+.api-test-message.error {
+  background-color: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+}
+
 .actions {
   display: flex;
   gap: 1rem;
@@ -107,6 +153,42 @@
 
 .start-game-btn:hover {
   background-color: #d35400;
+}
+
+.save-settings-btn {
+  flex: 1;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 0.8rem 1rem;
+  font-size: 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.save-settings-btn:hover {
+  background-color: #2980b9;
+}
+
+.save-success {
+  position: absolute;
+  bottom: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #27ae60;
+  font-weight: bold;
+  background-color: rgba(39, 174, 96, 0.2);
+  padding: 5px 10px;
+  border-radius: 4px;
+  animation: fadeInOut 3s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .show-rules-btn {
