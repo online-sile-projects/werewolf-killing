@@ -42,7 +42,38 @@ export async function simulateWerewolfAction(game, player) {
   
   if (targets.length === 0) return;
   
-  // AI隨機選擇一個目標
+  // 嘗試使用 AI 進行決策
+  if (game.settings.useAI && game.apiManager) {
+    try {
+      // 準備遊戲上下文
+      const gameContext = `現在是第 ${game.state.day} 天夜晚，你是狼人，需要選擇一位玩家擊殺。請考慮遊戲形勢做出決策。`;
+      
+      // 呼叫 AI 決策
+      const decision = await game.apiManager.generateAiDecision(
+        player.role,
+        'kill',
+        targets,
+        gameContext,
+        player.id
+      );
+      
+      // 如果 AI 成功決策且目標有效
+      if (decision && typeof decision.targetId === 'number') {
+        // 檢查目標是否有效
+        const targetPlayer = targets.find(p => p.id === decision.targetId);
+        if (targetPlayer) {
+          game.state.werewolfVoteResult = decision.targetId;
+          game.log.system(`AI狼人 ${player.name} 選擇了擊殺目標 (對你隱藏)`);
+          return;
+        }
+      }
+      console.log('AI 狼人決策無效或發生錯誤，改用隨機決策');
+    } catch (error) {
+      console.error('AI 狼人決策出錯:', error);
+    }
+  }
+  
+  // 如果 AI 決策失敗或未啟用 AI，使用隨機決策
   const selectedTarget = targets[Math.floor(Math.random() * targets.length)];
   game.state.werewolfVoteResult = selectedTarget.id;
   
