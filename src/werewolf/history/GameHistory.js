@@ -15,16 +15,23 @@ export class GameHistory {
    * @param {string} message - 訊息內容
    * @param {string} phase - 遊戲階段
    * @param {number} day - 遊戲天數
+   * @param {number|null} playerNumber - 相關玩家編號 (可選)
    */
-  addMessage(role, message, phase, day) {
+  addMessage(role, message, phase, day, playerNumber = null) {
     this.records.push({
       timestamp: new Date().toISOString(),
       role,
       message,
       phase,
-      day
+      day,
+      playerNumber
     });
-    console.log(`紀錄了一則來自 ${role} 的訊息`);
+    
+    let logMessage = `紀錄了一則來自 ${role} 的訊息`;
+    if (playerNumber !== null) {
+      logMessage += ` (玩家編號: ${playerNumber})`;
+    }
+    console.log(logMessage);
   }
 
   /**
@@ -69,6 +76,15 @@ export class GameHistory {
    */
   getRecordsByPhase(phase) {
     return this.records.filter(record => record.phase === phase);
+  }
+
+  /**
+   * 獲取特定玩家編號的歷史紀錄
+   * @param {number} playerNumber - 玩家編號
+   * @returns {Array} - 指定玩家編號的歷史紀錄
+   */
+  getRecordsByPlayerNumber(playerNumber) {
+    return this.records.filter(record => record.playerNumber === playerNumber);
   }
 
   /**
