@@ -524,6 +524,9 @@ export class ApiManager {
     // 用更豐富的上下文呼叫 API
     const response = await this.getResponse(fullContext, systemInstruction || defaultInstruction);
     
+    // 印出 response 變數以便除錯
+    console.log('API 回應結果:', response);
+    
     // 處理回應結果，嘗試解析為有效的決策
     if (response && response.response) {
       try {
