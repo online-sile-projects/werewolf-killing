@@ -1,6 +1,7 @@
 /**
  * ApiKeyManager - API 金鑰管理
  * 負責 API 金鑰的儲存、載入和驗證
+ * 支援瀏覽器 localStorage 和 Node.js 環境變數
  */
 
 const STORAGE_KEYS = {
@@ -8,6 +9,9 @@ const STORAGE_KEYS = {
     OPENAI_KEY: 'openaiApiKey',
     CURRENT_PROVIDER: 'currentProvider'
 };
+
+// 檢測是否為 Node.js 環境
+const isNode = typeof window === 'undefined' && typeof process !== 'undefined';
 
 export class ApiKeyManager {
     constructor() {
@@ -17,31 +21,56 @@ export class ApiKeyManager {
             gemini: '',
             openai: ''
         };
+        this._isNode = isNode;
     }
 
     /**
-     * 初始化：從 localStorage 載入設定
+     * 初始化：從 localStorage 或環境變數載入設定
      */
     init() {
-        this.loadFromStorage();
+        if (this._isNode) {
+            this.loadFromEnv();
+        } else {
+            this.loadFromStorage();
+        }
         return this;
     }
 
     /**
-     * 從 localStorage 載入 API 金鑰
+     * 從環境變數載入 API 金鑰 (Node.js)
+     */
+    loadFromEnv() {
+        try {
+            if (typeof process !== 'undefined' && process.env) {
+                if (process.env.GEMINI_API_KEY) {
+                    this._apiKeys.gemini = process.env.GEMINI_API_KEY;
+                }
+                if (process.env.OPENAI_API_KEY) {
+                    this._apiKeys.openai = process.env.OPENAI_API_KEY;
+                }
+            }
+        } catch (error) {
+            console.warn('無法從環境變數載入 API 金鑰:', error.message);
+        }
+    }
+
+    /**
+     * 從 localStorage 載入 API 金鑰 (瀏覽器)
      */
     loadFromStorage() {
         try {
-            this._providers.forEach(provider => {
-                const key = localStorage.getItem(`${provider}ApiKey`);
-                if (key) {
-                    this._apiKeys[provider] = key;
-                }
-            });
+            if (typeof localStorage !== 'undefined') {
+                this._providers.forEach(provider => {
+                    const key = localStorage.getItem(`${provider}ApiKey`);
+                    if (key) {
+                        this._apiKeys[provider] = key;
+                    }
+                });
 
-            const savedProvider = localStorage.getItem(STORAGE_KEYS.CURRENT_PROVIDER);
-            if (savedProvider && this._providers.includes(savedProvider)) {
-                this._currentProvider = savedProvider;
+                const savedProvider = localStorage.getItem(STORAGE_KEYS.CURRENT_PROVIDER);
+                if (savedProvider && this._providers.includes(savedProvider)) {
+                    this._currentProvider = savedProvider;
+                }
             }
         } catch (error) {
             console.warn('無法從 localStorage 載入 API 金鑰:', error);
@@ -52,16 +81,23 @@ export class ApiKeyManager {
      * 儲存 API 金鑰到 localStorage
      */
     saveToStorage() {
+        if (this._isNode) {
+            // Node.js 環境不儲存到 localStorage
+            return;
+        }
+
         try {
-            this._providers.forEach(provider => {
-                const key = this._apiKeys[provider];
-                if (key) {
-                    localStorage.setItem(`${provider}ApiKey`, key);
-                } else {
-                    localStorage.removeItem(`${provider}ApiKey`);
-                }
-            });
-            localStorage.setItem(STORAGE_KEYS.CURRENT_PROVIDER, this._currentProvider);
+            if (typeof localStorage !== 'undefined') {
+                this._providers.forEach(provider => {
+                    const key = this._apiKeys[provider];
+                    if (key) {
+                        localStorage.setItem(`${provider}ApiKey`, key);
+                    } else {
+                        localStorage.removeItem(`${provider}ApiKey`);
+                    }
+                });
+                localStorage.setItem(STORAGE_KEYS.CURRENT_PROVIDER, this._currentProvider);
+            }
         } catch (error) {
             console.warn('無法儲存 API 金鑰到 localStorage:', error);
         }
@@ -95,6 +131,13 @@ export class ApiKeyManager {
     hasApiKey(provider = null) {
         const p = provider || this._currentProvider;
         return !!this._apiKeys[p];
+    }
+
+    /**
+     * 檢查是否有任何 API 金鑰
+     */
+    hasAnyApiKey() {
+        return this._providers.some(p => !!this._apiKeys[p]);
     }
 
     /**
@@ -148,21 +191,19 @@ export class ApiKeyManager {
 
     /**
      * 自動選擇有金鑰的提供商
-     * 如果當前提供商沒有金鑰，會嘗試切換到有金鑰的提供商
      */
     getAvailableProvider() {
         if (this.hasApiKey(this._currentProvider)) {
             return this._currentProvider;
         }
 
-        // 嘗試找到有金鑰的提供商
         for (const provider of this._providers) {
             if (this.hasApiKey(provider)) {
                 return provider;
             }
         }
 
-        return this._currentProvider; // 沒有任何金鑰，返回當前提供商
+        return this._currentProvider;
     }
 
     // ========== 狀態快照 ==========

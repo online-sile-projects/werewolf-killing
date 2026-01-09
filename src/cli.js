@@ -94,8 +94,9 @@ async function main() {
             console.log(`\n${COLORS.green}AI 功能已啟用${COLORS.reset}`);
 
             // 檢查 API 金鑰
-            if (!apiManager.hasApiKey()) {
-                console.log(`${COLORS.yellow}提示: 請設定 Gemini 或 OpenAI API 金鑰以啟用 AI 功能${COLORS.reset}\n`);
+            if (!apiManager._keyManager.hasAnyApiKey()) {
+                console.log(`${COLORS.yellow}提示: 請設定 GEMINI_API_KEY 或 OPENAI_API_KEY 環境變數以啟用 AI 功能${COLORS.reset}`);
+                console.log(`${COLORS.gray}範例: GEMINI_API_KEY=your_key npm run cli${COLORS.reset}\n`);
             }
         }
 
