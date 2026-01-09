@@ -1,133 +1,172 @@
 /**
- * 狼人殺遊戲主類別
+ * 狼人殺遊戲主類別 (重構版)
+ * 使用核心模組進行狀態和玩家管理
  */
 import { createLogger } from './logger.js';
 import { ROLES, GAME_PHASES, NIGHT_ACTIONS_ORDER, DEFAULT_ROLE_DISTRIBUTION } from './roles/roleConstants.js';
-import { createPlayer, generatePlayerName, shuffleArray } from './utils.js';
 import { handleNightPhase } from './phases/nightPhase.js';
 import { handleDayDiscussionPhase } from './phases/dayPhase.js';
 import { handleVotingPhase, handleVoteResult } from './phases/votingPhase.js';
 
+// 匯入核心模組
+import { EventEmitter, GameEvents } from './core/EventEmitter.js';
+import { GameState } from './core/GameState.js';
+import { PlayerManager } from './core/PlayerManager.js';
+
 export class WerewolfGame {
   constructor() {
-    this.gameStarted = false;
-    this.players = [];
-    this.state = {
-      phase: '遊戲設置',
-      day: 0,
-      nightKilled: null,
-      dayDiscussions: [],
-      votes: {},
-      seerChecks: [],
-      werewolfVotes: {},
-      werewolfVoteResult: null,
-      witchSaved: false,
-      witchPoisoned: false,
-      guardProtected: null,
-      lastProtected: null
-    };
-    
-    // 角色設定
+    // 初始化核心系統
+    this._eventEmitter = new EventEmitter();
+    this._gameState = new GameState(this._eventEmitter);
+    this._playerManager = new PlayerManager(this._eventEmitter);
+
+    // 角色設定（保持向後相容）
     this.roles = ROLES;
-    
-    // 遊戲階段
     this.gamePhases = GAME_PHASES;
-    
-    // 夜晚行動順序
     this.nightActionsOrder = NIGHT_ACTIONS_ORDER;
-    
-    // 預設遊戲設定
+
+    // 遊戲設定
     this.settings = {
       playerCount: 8,
       roleDistribution: DEFAULT_ROLE_DISTRIBUTION,
-      useAI: false  // 預設不使用 AI
+      useAI: false
     };
-    
-    this.humanPlayerId = null;
+
+    // 日誌和輸入管理
     this.log = createLogger();
-    
     this._waitingForInput = false;
     this._currentResolve = null;
-    
-    // API 管理器 (由 index.js 設定)
+
+    // API 管理器 (由外部設定)
     this.apiManager = null;
+
+    // 設置內部事件監聽
+    this._setupEventListeners();
   }
-  
+
   /**
-   * 獲取還活著的玩家
+   * 設置內部事件監聽器
    */
+  _setupEventListeners() {
+    // 監聽玩家死亡事件
+    this._eventEmitter.on(GameEvents.PLAYER_DIED, ({ playerId, playerName }) => {
+      this.log.dead(`${playerName} (ID: ${playerId}) 已死亡`);
+    });
+
+    // 監聯階段變更
+    this._eventEmitter.on('phase:change', ({ from, to }) => {
+      this.log.system(`階段變更: ${from} -> ${to}`);
+    });
+  }
+
+  // ========== 向後相容的存取器 ==========
+
+  /**
+   * 向後相容: 存取 players 陣列
+   */
+  get players() {
+    return this._playerManager.players;
+  }
+
+  /**
+   * 向後相容: 存取 humanPlayerId
+   */
+  get humanPlayerId() {
+    return this._playerManager.humanPlayerId;
+  }
+
+  /**
+   * 向後相容: 存取 gameStarted
+   */
+  get gameStarted() {
+    return this._gameState.gameStarted;
+  }
+
+  set gameStarted(value) {
+    this._gameState.gameStarted = value;
+  }
+
+  /**
+   * 向後相容: 存取 state 物件
+   * 這是為了讓現有的 phases 程式碼能夠運作
+   * 使用閉包捕獲 _gameState 參考
+   */
+  get state() {
+    const gs = this._gameState;
+    return {
+      get phase() { return gs.phase; },
+      set phase(v) { gs.phase = v; },
+      get day() { return gs.day; },
+      set day(v) { gs.day = v; },
+      get nightKilled() { return gs.nightKilled; },
+      set nightKilled(v) { gs.nightKilled = v; },
+      get dayDiscussions() { return gs.dayDiscussions; },
+      get votes() { return gs.votes; },
+      set votes(v) { gs.votes = v; },
+      get seerChecks() { return gs.seerChecks; },
+      get werewolfVotes() { return gs.werewolfVotes; },
+      set werewolfVotes(v) { gs.werewolfVotes = v; },
+      get werewolfVoteResult() { return gs.werewolfVoteResult; },
+      set werewolfVoteResult(v) { gs.werewolfVoteResult = v; },
+      get witchSaved() { return gs.witchSaved; },
+      set witchSaved(v) { gs.witchSaved = v; },
+      get witchPoisoned() { return gs.witchPoisoned; },
+      set witchPoisoned(v) { gs.witchPoisoned = v; },
+      get witchPoisonTarget() { return gs.witchPoisonTarget; },
+      set witchPoisonTarget(v) { gs.witchPoisonTarget = v; },
+      get guardProtected() { return gs.guardProtected; },
+      set guardProtected(v) { gs.guardProtected = v; },
+      get lastProtected() { return gs.lastProtected; },
+      set lastProtected(v) { gs.lastProtected = v; },
+      get winner() { return gs.winner; },
+      set winner(v) { gs.winner = v; }
+    };
+  }
+
+  // ========== 玩家查詢方法 (委託給 PlayerManager) ==========
+
   getAlivePlayers() {
-    return this.players.filter(player => player.isAlive);
+    return this._playerManager.getAlivePlayers();
   }
-  
-  /**
-   * 獲取人類玩家
-   */
+
   getHumanPlayer() {
-    return this.players.find(p => p.isHuman);
+    return this._playerManager.getHumanPlayer();
   }
-  
-  /**
-   * 獲取指定角色的所有玩家
-   */
+
   getPlayersByRole(role) {
-    return this.players.filter(p => p.role === role && p.isAlive);
+    return this._playerManager.getPlayersByRole(role);
   }
-  
-  /**
-   * 獲取狼人陣營的玩家
-   */
+
   getWerewolfTeam() {
-    return this.getPlayersByRole(this.roles.WEREWOLF);
+    return this._playerManager.getWerewolfTeam();
   }
-  
-  /**
-   * 獲取好人陣營的玩家
-   */
+
   getVillageTeam() {
-    return this.players.filter(p => 
-      p.role !== this.roles.WEREWOLF && p.isAlive
-    );
+    return this._playerManager.getVillageTeam();
   }
-  
-  /**
-   * 檢查遊戲是否結束
-   */
+
+  // ========== 遊戲結束檢查 ==========
+
   isGameOver() {
-    const werewolves = this.getWerewolfTeam();
-    const villagers = this.getVillageTeam();
-    
-    if (werewolves.length === 0) {
-      this.state.winner = 'village';
-      return true;
+    const result = this._playerManager.checkGameOver();
+    if (result.isOver) {
+      this._gameState.winner = result.winner;
     }
-    
-    if (werewolves.length >= villagers.length) {
-      this.state.winner = 'werewolf';
-      return true;
-    }
-    
-    return false;
+    return result.isOver;
   }
-  
-  /**
-   * 使用者輸入的處理函式
-   */
+
+  // ========== 使用者輸入處理 ==========
+
   async ask(question) {
     this.log.info(question);
     console.log('%c> ', 'color: #00cc99; font-weight: bold;');
-    
-    // 在控制台環境中，我們無法直接捕獲使用者輸入
-    // 使用者需要在控制台手動呼叫 Werewolf._answerQuestion('xxxx')
+
     return new Promise(resolve => {
       this._currentResolve = resolve;
       this._waitingForInput = true;
     });
   }
-  
-  /**
-   * 接收使用者的回應
-   */
+
   _answerQuestion(answer) {
     if (this._waitingForInput && this._currentResolve) {
       console.log(`%c> ${answer}`, 'color: #ffffff;');
@@ -141,49 +180,43 @@ export class WerewolfGame {
     }
     return false;
   }
-  
-  /**
-   * 選擇選單選項
-   */
+
   async selectOption(options, question = '請選擇一個選項:') {
     this.log.info(question);
-    
+
     options.forEach((option, index) => {
       console.log(`%c${index + 1}. ${option}`, 'color: #ccccff;');
     });
     console.log('%c0. 取消', 'color: #ff9999;');
-    
+
     let selection = null;
     while (selection === null) {
       const answer = await this.ask('請輸入選項編號:');
       const choice = parseInt(answer);
-      
+
       if (isNaN(choice)) {
         this.log.warning('請輸入有效的數字!');
       } else if (choice < 0 || choice > options.length) {
         this.log.warning(`請輸入 0-${options.length} 的數字!`);
       } else {
-        selection = choice - 1; // 轉為以 0 為起始的索引
-        if (choice === 0) selection = -1; // 取消選擇
+        selection = choice - 1;
+        if (choice === 0) selection = -1;
       }
     }
-    
+
     return selection;
   }
-  
-  /**
-   * 是/否問題
-   */
+
   async askYesNo(question) {
     this.log.info(`${question} (y/n)`);
-    
+
     let validAnswer = false;
     let result = false;
-    
+
     while (!validAnswer) {
       const answer = await this.ask('請輸入 y 或 n:');
       const lowerAnswer = answer.toLowerCase();
-      
+
       if (lowerAnswer === 'y' || lowerAnswer === 'yes') {
         result = true;
         validAnswer = true;
@@ -194,81 +227,51 @@ export class WerewolfGame {
         this.log.warning('請輸入 y 或 n!');
       }
     }
-    
+
     return result;
   }
-  
-  /**
-   * 重置遊戲狀態
-   */
+
+  // ========== 遊戲控制 ==========
+
   resetGame() {
-    // 清空玩家列表
-    this.players = [];
-    this.humanPlayerId = null;
-    
-    // 重置遊戲狀態
-    this.gameStarted = false;
-    this.state = {
-      phase: '遊戲設置',
-      day: 0,
-      nightKilled: null,
-      dayDiscussions: [],
-      votes: {},
-      seerChecks: [],
-      werewolfVotes: {},
-      werewolfVoteResult: null,
-      witchSaved: false,
-      witchPoisoned: false,
-      guardProtected: null,
-      lastProtected: null
-    };
+    this._playerManager.reset();
+    this._gameState.reset();
+
+    // 清除遊戲歷史
+    if (this.apiManager) {
+      this.apiManager.clearGameHistory();
+    }
   }
 
-  /**
-   * 啟動遊戲
-   */
   async startGame() {
-    // 重置遊戲狀態
     this.resetGame();
-    
+
     this.log.title('=== 歡迎來到狼人殺遊戲（控制台版本）===');
     this.log.system('輸入 Werewolf._answerQuestion("您的回答") 來回答問題');
     this.log.divider();
-    
-    // 初始化遊戲
+
     await this.setupInitialGame();
-    
-    // 等待玩家準備好
     await this.ask('按Enter開始遊戲...');
-    
-    // 開始第一個夜晚
-    this.state.phase = this.gamePhases.NIGHT;
+
+    this._gameState.phase = this.gamePhases.NIGHT;
+    this._gameState.gameStarted = true;
     this.printGameStatus();
-    
-    // 開始遊戲主循環
+
     await this.gameLoop();
   }
-  
-  /**
-   * 初始化遊戲
-   */
+
   async setupInitialGame() {
     this.log.system('遊戲設置中...');
-    
-    // 創建玩家
+
     await this.createPlayers();
-    
-    // 分配角色
     this.assignRoles();
-    
+
     this.log.success('遊戲設置完成！');
-    this.log.success(`總玩家數: ${this.players.length}`);
-    
-    // 取得人類玩家
+    this.log.success(`總玩家數: ${this._playerManager.playerCount}`);
+
     const humanPlayer = this.getHumanPlayer();
     this.log.role(`您的角色: ${humanPlayer.role}`);
-    
-    // 如果是狼人，顯示其他狼人
+
     if (humanPlayer.role === this.roles.WEREWOLF) {
       const otherWerewolves = this.getWerewolfTeam().filter(p => p.id !== humanPlayer.id);
       if (otherWerewolves.length > 0) {
@@ -281,128 +284,44 @@ export class WerewolfGame {
       }
     }
   }
-  
-  /**
-   * 創建玩家
-   */
+
   async createPlayers() {
-    // 獲取玩家數量
     const playerCountInput = await this.ask(`請輸入玩家總數 (默認 ${this.settings.playerCount}): `);
     const playerCount = parseInt(playerCountInput) || this.settings.playerCount;
     this.settings.playerCount = playerCount;
-    
-    // 決定人類玩家的隨機位置（ID）
-    const humanId = Math.floor(Math.random() * playerCount) + 1; // 1 到 playerCount 之間的隨機數
-    this.humanPlayerId = humanId;
-    
-    // 創建人類玩家
+
     const humanName = await this.ask('請輸入您的名字: ');
-    const humanPlayer = createPlayer(humanId, humanName || `玩家${humanId}`, true);
-    this.players.push(humanPlayer);
-    
-    // 創建AI玩家
-    const usedNames = [humanPlayer.name]; // 記錄已使用的名稱，包括人類玩家的名稱
-    
-    for (let i = 1; i <= this.settings.playerCount; i++) {
-      // 跳過人類玩家的 ID
-      if (i === humanId) continue;
-      
-      // 產生不重複的名稱
-      const aiPlayerName = generatePlayerName(usedNames);
-      const aiPlayer = createPlayer(i, aiPlayerName, false);
-      
-      // 將名稱加入已使用列表
-      usedNames.push(aiPlayerName);
-      this.players.push(aiPlayer);
-    }
-    
-    // 依照 ID 排序玩家，方便顯示
-    this.players.sort((a, b) => a.id - b.id);
-    
-    // 輸出所有玩家的名稱和ID以便確認
-    this.log.success(`已創建 ${this.players.length} 名玩家:`);
-    this.players.forEach(player => {
+
+    const humanPlayer = this._playerManager.createPlayers(playerCount, humanName);
+
+    this.log.success(`已創建 ${this._playerManager.playerCount} 名玩家:`);
+    this._playerManager.forEach(player => {
       this.log.player(`- ID: ${player.id}, 名稱: ${player.name}${player.isHuman ? ' (人類玩家)' : ''}`);
     });
+
+    return humanPlayer;
   }
-  
-  /**
-   * 分配角色
-   */
+
   assignRoles() {
     this.log.system('分配角色中...');
-    
-    // 調整角色分配
-    const totalPlayers = this.players.length;
-    let roleDistribution = { ...this.settings.roleDistribution };
-    
-    // 檢查玩家人數，調整狼人數量
-    if (totalPlayers <= 4 && roleDistribution.WEREWOLF > 1) {
+
+    // 調整分配（少於4人時只有1隻狼人）
+    if (this._playerManager.playerCount <= 4) {
       this.log.system('玩家人數少於或等於4人，狼人數量調整為1');
-      const werewolfDiff = roleDistribution.WEREWOLF - 1;
-      roleDistribution.WEREWOLF = 1;
-      roleDistribution.VILLAGER += werewolfDiff; // 多餘的狼人變成村民
     }
-    
-    // 計算總角色數
-    const totalRoles = Object.values(roleDistribution).reduce((sum, count) => sum + count, 0);
-    
-    // 如果角色數與玩家數不匹配，調整村民數量
-    if (totalRoles !== totalPlayers) {
-      const diff = totalPlayers - totalRoles;
-      roleDistribution.VILLAGER += diff;
-    }
-    
-    // 創建角色池
-    let rolePool = [];
-    for (const [role, count] of Object.entries(roleDistribution)) {
-      for (let i = 0; i < count; i++) {
-        rolePool.push(role);
-      }
-    }
-    
-    // 隨機分配角色
-    rolePool = shuffleArray(rolePool);
-    this.players.forEach(player => {
-      player.role = this.roles[rolePool.pop()];
-      
-      // 根據角色設置特殊能力
-      switch (player.role) {
-        case this.roles.WITCH:
-          player.abilities = {
-            hasMedicine: true, // 解藥
-            hasPoison: true    // 毒藥
-          };
-          break;
-        case this.roles.HUNTER:
-          player.abilities = {
-            canShoot: true     // 獵人能力
-          };
-          break;
-        case this.roles.GUARD:
-          player.abilities = {
-            lastProtected: null // 上一次保護的玩家ID（守衛不能連續兩晚保護同一個人）
-          };
-          break;
-        default:
-          player.abilities = {};
-          break;
-      }
-    });
+
+    this._playerManager.assignRoles(this.settings.roleDistribution);
   }
-  
-  /**
-   * 列印遊戲狀態
-   */
+
   printGameStatus() {
     this.log.divider();
-    this.log.title(`階段: ${this.state.phase}`);
-    if (this.state.day > 0) {
-      this.log.info(`第 ${this.state.day} 天`);
+    this.log.title(`階段: ${this._gameState.phase}`);
+    if (this._gameState.day > 0) {
+      this.log.info(`第 ${this._gameState.day} 天`);
     }
-    
+
     this.log.system('當前玩家狀態:');
-    this.players.forEach(player => {
+    this._playerManager.forEach(player => {
       if (player.isAlive) {
         this.log.player(`${player.name} (ID: ${player.id}) ${player.isHuman ? '(你)' : ''}`);
       } else {
@@ -411,93 +330,73 @@ export class WerewolfGame {
     });
     this.log.divider();
   }
-  
-  /**
-   * 遊戲主循環
-   */
+
   async gameLoop() {
     this.log.title('=== 遊戲開始 ===');
-    
+
     let gameRunning = true;
     while (gameRunning) {
-      // 處理夜晚階段
-      if (this.state.phase === this.gamePhases.NIGHT) {
-        // 檢查遊戲是否結束（在進入夜晚階段時）
+      if (this._gameState.phase === this.gamePhases.NIGHT) {
         if (this.isGameOver()) {
-          this.state.phase = this.gamePhases.GAME_OVER;
+          this._gameState.phase = this.gamePhases.GAME_OVER;
           this.printGameStatus();
         } else {
           await handleNightPhase(this);
         }
       }
-      
-      // 處理白天討論階段
-      else if (this.state.phase === this.gamePhases.DAY_DISCUSSION) {
+      else if (this._gameState.phase === this.gamePhases.DAY_DISCUSSION) {
         await handleDayDiscussionPhase(this);
       }
-      
-      // 處理投票階段
-      else if (this.state.phase === this.gamePhases.VOTING) {
+      else if (this._gameState.phase === this.gamePhases.VOTING) {
         const voteResult = await handleVotingPhase(this);
         await handleVoteResult(this, voteResult);
-        
-        // 檢查投票後是否遊戲結束
+
         if (this.isGameOver()) {
-          this.state.phase = this.gamePhases.GAME_OVER;
+          this._gameState.phase = this.gamePhases.GAME_OVER;
           this.printGameStatus();
         } else {
-          this.state.phase = this.gamePhases.NIGHT;
+          this._gameState.phase = this.gamePhases.NIGHT;
           this.printGameStatus();
         }
       }
-      
-      // 處理遊戲結束
-      else if (this.state.phase === this.gamePhases.GAME_OVER) {
+      else if (this._gameState.phase === this.gamePhases.GAME_OVER) {
         this.handleGameOver();
-        gameRunning = false; // 結束遊戲循環
+        gameRunning = false;
       }
     }
   }
-  
-  /**
-   * 處理遊戲結束
-   */
+
   handleGameOver() {
     this.log.title('=== 遊戲結束 ===');
-    
-    if (this.state.winner === 'village') {
+
+    if (this._gameState.winner === 'village') {
       this.log.success('好人陣營獲勝！村莊恢復了和平！');
-    } else if (this.state.winner === 'werewolf') {
+    } else if (this._gameState.winner === 'werewolf') {
       this.log.warning('狼人陣營獲勝！村莊陷入了恐懼...');
     }
-    
-    // 顯示所有玩家的角色信息
+
     this.log.info('所有玩家角色：');
-    this.players.forEach(player => {
+    this._playerManager.forEach(player => {
       const status = player.isAlive ? '存活' : '死亡';
       this.log.player(`${player.name} (ID: ${player.id}) - ${player.role} (${status})`);
     });
-    
+
     this.log.divider();
     this.log.system('遊戲已結束，感謝您的參與！');
     this.log.system('若要再次遊玩，請呼叫 Werewolf.startGame()');
   }
-  
-  /**
-   * 獲取角色名稱
-   */
+
   getRoleName(roleKey) {
     return this.roles[roleKey] || roleKey;
   }
-  
-  /**
-   * 使用 AI 生成故事敘述
-   */
+
+  // ========== AI 相關方法 ==========
+
   async generateStoryWithAI(context) {
     if (!this.apiManager || !this.settings.useAI) {
       return null;
     }
-    
+
     try {
       const response = await this.apiManager.generateStory(context);
       if (response && response.response) {
@@ -509,30 +408,26 @@ export class WerewolfGame {
       return null;
     }
   }
-  
-  /**
-   * 使用 AI 生成 NPC 回應
-   */
+
   async generateNpcResponseWithAI(playerId, context) {
     if (!this.apiManager || !this.settings.useAI) {
       return null;
     }
-    
-    const player = this.players.find(p => p.id === playerId);
+
+    const player = this._playerManager.getPlayerById(playerId);
     if (!player || player.isHuman) {
       return null;
     }
-    
-    // 構建遊戲狀態資訊
+
     const gameStatus = {
-      phase: this.state.phase,
-      day: this.state.day,
+      phase: this._gameState.phase,
+      day: this._gameState.day,
       alivePlayers: this.getAlivePlayers().map(p => ({
         id: p.id,
         name: p.name,
         role: player.role === this.roles.WEREWOLF && p.role === this.roles.WEREWOLF ? p.role : '未知'
       })),
-      deadPlayers: this.players.filter(p => !p.isAlive).map(p => ({
+      deadPlayers: this._playerManager.getDeadPlayers().map(p => ({
         id: p.id,
         name: p.name,
         role: p.role
@@ -540,7 +435,7 @@ export class WerewolfGame {
       playerRole: player.role,
       playerId: player.id
     };
-    
+
     try {
       const response = await this.apiManager.generateNpcResponse(player.role, context, player.id, null, gameStatus);
       if (response && response.response) {
@@ -552,12 +447,7 @@ export class WerewolfGame {
       return null;
     }
   }
-  
-  /**
-   * 設定 AI 功能的啟用狀態
-   * @param {boolean} enabled - 是否啟用 AI 功能
-   * @returns {boolean} - 目前的 AI 啟用狀態
-   */
+
   setAIEnabled(enabled) {
     if (typeof enabled !== 'boolean') {
       throw new Error('AI 啟用狀態必須是布林值');
@@ -566,18 +456,15 @@ export class WerewolfGame {
     this.log.info(`AI 功能已${enabled ? '啟用' : '停用'}`);
     return this.settings.useAI;
   }
-  
-  /**
-   * 測試 AI API 連線
-   */
+
   async testAIConnection() {
     if (!this.apiManager) {
       this.log.error('未設定 API 管理器，無法測試 AI 連線。');
       return false;
     }
-    
+
     this.log.system('正在測試 AI API 連線...');
-    
+
     const result = await this.apiManager.testApiConnection();
     if (result.success) {
       this.log.success('AI API 連線測試成功！');
@@ -588,31 +475,40 @@ export class WerewolfGame {
     }
   }
 
-  /**
-   * 紀錄遊戲訊息到歷史紀錄
-   */
   recordGameMessage(role, message) {
-    // 如果有 API 管理器，就記錄訊息
     if (this.apiManager) {
       this.apiManager.addGameMessage(
-        role, 
+        role,
         message,
-        this.state.phase,
-        this.state.day
+        this._gameState.phase,
+        this._gameState.day
       );
     }
-    
-    // 同時記錄到玩家的歷史紀錄
+
     if (role.startsWith('玩家-')) {
       const playerId = parseInt(role.split('-')[1]);
-      const player = this.players.find(p => p.id === playerId);
-      if (player && player.history) {
-        player.history.push({
-          day: this.state.day,
-          phase: this.state.phase,
-          message
-        });
-      }
+      this._playerManager.addPlayerHistory(
+        playerId,
+        this._gameState.day,
+        this._gameState.phase,
+        message
+      );
     }
+  }
+
+  // ========== 新增：事件系統存取 ==========
+
+  /**
+   * 註冊事件監聽器
+   */
+  on(event, listener) {
+    return this._eventEmitter.on(event, listener);
+  }
+
+  /**
+   * 發送事件
+   */
+  emit(event, data) {
+    this._eventEmitter.emit(event, data);
   }
 }

@@ -5,72 +5,88 @@ import '../styles/StartScreen.css';
  * 遊戲開始畫面元件
  * 顯示遊戲標題、規則說明和開始遊戲設定
  */
-function StartScreen({ onStartGame, defaultPlayerCount = 8, defaultPlayerName = '', defaultUseAI = false, defaultGeminiKey = '' }) {
+function StartScreen({ onStartGame, defaultPlayerCount = 8, defaultPlayerName = '', defaultUseAI = false, defaultGeminiKey = '', defaultOpenaiKey = '' }) {
   // 設定狀態
   const [showRules, setShowRules] = useState(false);
   const [playerCount, setPlayerCount] = useState(defaultPlayerCount);
   const [playerName, setPlayerName] = useState(defaultPlayerName);
   const [useAI, setUseAI] = useState(defaultUseAI);
   const [geminiKey, setGeminiKey] = useState(defaultGeminiKey);
+  const [openaiKey, setOpenaiKey] = useState(defaultOpenaiKey);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [apiTestStatus, setApiTestStatus] = useState({ testing: false, success: null, message: '' });
+  const [apiTestStatus, setApiTestStatus] = useState({ testing: false, success: null, message: '', provider: '' });
 
   // 處理遊戲開始
   const handleStartGame = (e) => {
     e.preventDefault();
-    
+
     // 驗證玩家名稱
     if (!playerName.trim()) {
       alert('請輸入您的名字！');
       return;
     }
-    
-    // 如果啟用 AI 但未提供 Gemini API Key
-    if (useAI && !geminiKey.trim()) {
-      alert('啟用 AI 功能時，請提供 Gemini API Key！');
+
+    // 如果啟用 AI 但未提供任何 API Key
+    if (useAI && !geminiKey.trim() && !openaiKey.trim()) {
+      alert('啟用 AI 功能時，請提供至少一個 API Key！');
       return;
     }
-    
-    // 如果啟用 AI，同時儲存 API Key 到 WerewolfApi (如果可用)
-    if (useAI && geminiKey && window.WerewolfApi) {
-      try {
-        window.WerewolfApi.saveApiKeys(geminiKey);
-      } catch (error) {
-        console.error('儲存 API Key 到 WerewolfApi 時發生錯誤:', error);
+
+    // 如果啟用 AI，同時儲存 API Key
+    if (useAI) {
+      // 直接儲存到 localStorage (供 apiManager 載入)
+      if (geminiKey) localStorage.setItem('geminiApiKey', geminiKey);
+      if (openaiKey) localStorage.setItem('openaiApiKey', openaiKey);
+
+      // 同時儲存到 WerewolfApi (如果可用)
+      if (window.WerewolfApi) {
+        try {
+          window.WerewolfApi.saveApiKeys(geminiKey, openaiKey);
+        } catch (error) {
+          console.error('儲存 API Key 到 WerewolfApi 時發生錯誤:', error);
+        }
       }
     }
-    
+
     // 傳送設定到父元件
     onStartGame({
       playerCount: playerCount,
       playerName: playerName,
       useAI: useAI,
-      geminiKey: geminiKey
+      geminiKey: geminiKey,
+      openaiKey: openaiKey
     });
   };
-  
+
   // 處理設定儲存
   const handleSaveSettings = (e) => {
     e.preventDefault();
-    
+
     try {
       // 儲存設定到 localStorage
       const settings = {
         playerCount,
         playerName,
         useAI,
-        geminiKey: useAI ? geminiKey : ''
+        geminiKey: useAI ? geminiKey : '',
+        openaiKey: useAI ? openaiKey : ''
       };
-      
+
       localStorage.setItem('werewolfGameSettings', JSON.stringify(settings));
-      
-      // 如果啟用 AI，同時儲存 API Key 到 WerewolfApi
-      if (useAI && geminiKey && window.WerewolfApi) {
-        window.WerewolfApi.saveApiKeys(geminiKey);
+
+      // 直接儲存 API Keys 到 localStorage (供 apiManager 載入)
+      if (useAI) {
+        if (geminiKey) localStorage.setItem('geminiApiKey', geminiKey);
+        if (openaiKey) localStorage.setItem('openaiApiKey', openaiKey);
       }
-      
+
+      // 如果啟用 AI，同時儲存 API Key 到 WerewolfApi
+      if (useAI && window.WerewolfApi) {
+        window.WerewolfApi.saveApiKeys(geminiKey, openaiKey);
+      }
+
       setSaveSuccess(true);
-      
+
       // 3秒後重設成功訊息
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
@@ -78,89 +94,56 @@ function StartScreen({ onStartGame, defaultPlayerCount = 8, defaultPlayerName = 
       alert('儲存設定失敗，請再試一次！');
     }
   };
-  
+
   // 測試 API 金鑰
-  const handleTestApi = async () => {
-    // 檢查是否有輸入 API 金鑰
-    if (!geminiKey.trim()) {
-      alert('請先輸入 Gemini API Key');
+  const handleTestApi = async (provider = 'gemini') => {
+    const apiKey = provider === 'gemini' ? geminiKey : openaiKey;
+
+    if (!apiKey.trim()) {
+      alert(`請先輸入 ${provider === 'gemini' ? 'Gemini' : 'OpenAI'} API Key`);
       return;
     }
-    
-    // 設定測試中狀態
-    setApiTestStatus({ testing: true, success: null, message: '測試中...' });
-    
+
+    setApiTestStatus({ testing: true, success: null, message: '測試中...', provider });
+
     try {
-      // 使用 window.WerewolfApi 測試連線 (如果可用)
       if (window.WerewolfApi) {
-        // 確保 API Key 已儲存
-        window.WerewolfApi.saveApiKeys(geminiKey);
-        
-        // 測試連線
-        const result = await window.WerewolfApi.testApiConnection('gemini');
-        
+        window.WerewolfApi.setApiKey(provider, apiKey);
+        const result = await window.WerewolfApi.testApiConnection(provider);
+
         if (result.success) {
-          setApiTestStatus({ 
-            testing: false, 
-            success: true, 
-            message: '連線測試成功！API 金鑰有效。' 
-          });
+          setApiTestStatus({ testing: false, success: true, message: '連線測試成功！', provider });
         } else {
-          setApiTestStatus({ 
-            testing: false, 
-            success: false, 
-            message: `連線失敗: ${result.error || '無法連線到 Gemini API'}` 
-          });
+          setApiTestStatus({ testing: false, success: false, message: `連線失敗: ${result.error}`, provider });
         }
       } else {
-        // 如果找不到 WerewolfApi，使用直接的測試方法
-        const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + geminiKey, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: '測試連線, 請回傳 "連線成功"'
-                  }
-                ]
-              }
-            ]
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok && data.candidates && data.candidates.length > 0) {
-          setApiTestStatus({ 
-            testing: false, 
-            success: true, 
-            message: '連線測試成功！API 金鑰有效。' 
+        let response;
+        if (provider === 'gemini') {
+          response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: '測試' }] }] })
           });
         } else {
-          setApiTestStatus({ 
-            testing: false, 
-            success: false, 
-            message: `連線失敗: ${data.error?.message || '無法連線到 Gemini API'}` 
+          response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+            body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: '測試' }], max_tokens: 5 })
           });
+        }
+
+        if (response.ok) {
+          setApiTestStatus({ testing: false, success: true, message: '連線測試成功！', provider });
+        } else {
+          const data = await response.json();
+          setApiTestStatus({ testing: false, success: false, message: `連線失敗: ${data.error?.message || '錯誤'}`, provider });
         }
       }
     } catch (error) {
-      console.error('API 測試失敗:', error);
-      setApiTestStatus({ 
-        testing: false, 
-        success: false, 
-        message: `連線錯誤: ${error.message}` 
-      });
+      setApiTestStatus({ testing: false, success: false, message: `連線錯誤: ${error.message}`, provider });
     }
-    
-    // 5秒後清除訊息
-    setTimeout(() => {
-      setApiTestStatus(prev => ({...prev, message: ''}));
-    }, 5000);
+
+    setTimeout(() => setApiTestStatus(prev => ({ ...prev, message: '' })), 5000);
   };
 
   return (
@@ -175,21 +158,21 @@ function StartScreen({ onStartGame, defaultPlayerCount = 8, defaultPlayerName = 
           <form onSubmit={handleStartGame}>
             <div className="form-group">
               <label htmlFor="playerName">玩家名稱</label>
-              <input 
-                type="text" 
-                id="playerName" 
-                value={playerName} 
+              <input
+                type="text"
+                id="playerName"
+                value={playerName}
                 onChange={e => setPlayerName(e.target.value)}
                 placeholder="請輸入您的名字"
-                required 
+                required
               />
             </div>
 
             <div className="form-group">
               <label htmlFor="playerCount">玩家數量</label>
-              <select 
-                id="playerCount" 
-                value={playerCount} 
+              <select
+                id="playerCount"
+                value={playerCount}
                 onChange={e => setPlayerCount(parseInt(e.target.value))}
               >
                 {[4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
@@ -199,54 +182,115 @@ function StartScreen({ onStartGame, defaultPlayerCount = 8, defaultPlayerName = 
             </div>
 
             <div className="form-group checkbox">
-              <input 
-                type="checkbox" 
-                id="useAI" 
-                checked={useAI} 
-                onChange={e => setUseAI(e.target.checked)} 
+              <input
+                type="checkbox"
+                id="useAI"
+                checked={useAI}
+                onChange={e => setUseAI(e.target.checked)}
               />
               <label htmlFor="useAI">啟用 AI 功能</label>
             </div>
 
             {useAI && (
-              <div className="form-group">
-                <label htmlFor="geminiKey">Gemini API Key <small>(明文顯示)</small></label>
-                <div className="api-input-container">
-                  <input 
-                    type="text" 
-                    id="geminiKey" 
-                    value={geminiKey} 
-                    onChange={e => setGeminiKey(e.target.value)}
-                    placeholder="請輸入您的 Gemini API Key"
-                  />
-                  <button 
-                    type="button" 
-                    className="test-api-btn"
-                    onClick={handleTestApi}
+              <>
+                <div className="form-group">
+                  <label htmlFor="geminiKey">Gemini API Key <small>(文字/圖像)</small></label>
+                  <div className="api-input-container">
+                    <input
+                      type="text"
+                      id="geminiKey"
+                      value={geminiKey}
+                      onChange={e => setGeminiKey(e.target.value)}
+                      placeholder="請輸入您的 Gemini API Key"
+                    />
+                    <button
+                      type="button"
+                      className="test-api-btn"
+                      onClick={() => handleTestApi('gemini')}
+                    >
+                      測試
+                    </button>
+                  </div>
+                  {apiTestStatus && apiTestStatus.message && apiTestStatus.provider === 'gemini' && (
+                    <div className={`api-test-message ${apiTestStatus.success ? 'success' : 'error'}`}>
+                      {apiTestStatus.message}
+                    </div>
+                  )}
+                </div>
+                <div className="form-group">
+                  <label htmlFor="openaiKey">OpenAI API Key <small>(圖像/語音)</small></label>
+                  <div className="api-input-container">
+                    <input
+                      type="text"
+                      id="openaiKey"
+                      value={openaiKey}
+                      onChange={e => setOpenaiKey(e.target.value)}
+                      placeholder="請輸入您的 OpenAI API Key"
+                    />
+                    <button
+                      type="button"
+                      className="test-api-btn"
+                      onClick={() => handleTestApi('openai')}
+                    >
+                      測試
+                    </button>
+                  </div>
+                  {apiTestStatus && apiTestStatus.message && apiTestStatus.provider === 'openai' && (
+                    <div className={`api-test-message ${apiTestStatus.success ? 'success' : 'error'}`}>
+                      {apiTestStatus.message}
+                    </div>
+                  )}
+                </div>
+                <div className="api-actions">
+                  <button
+                    type="button"
+                    className="save-api-btn"
+                    onClick={() => {
+                      if (geminiKey) localStorage.setItem('geminiApiKey', geminiKey);
+                      if (openaiKey) localStorage.setItem('openaiApiKey', openaiKey);
+                      if (window.WerewolfApi) {
+                        window.WerewolfApi.saveApiKeys(geminiKey, openaiKey);
+                      }
+                      alert('API Keys 已儲存！');
+                    }}
                   >
-                    測試 API
+                    💾 儲存 API Keys
+                  </button>
+                  <button
+                    type="button"
+                    className="debug-api-btn"
+                    onClick={() => {
+                      const stored = {
+                        geminiApiKey: localStorage.getItem('geminiApiKey') ? '已設定' : '未設定',
+                        openaiApiKey: localStorage.getItem('openaiApiKey') ? '已設定' : '未設定',
+                        werewolfApi: window.WerewolfApi ? {
+                          currentProvider: window.WerewolfApi.currentProvider,
+                          geminiKey: window.WerewolfApi.apiKeys?.gemini ? '已設定' : '未設定',
+                          openaiKey: window.WerewolfApi.apiKeys?.openai ? '已設定' : '未設定'
+                        } : '未初始化'
+                      };
+                      console.log('=== API Debug Info ===', stored);
+                      alert(`Debug Info:\n${JSON.stringify(stored, null, 2)}`);
+                    }}
+                  >
+                    🔍 Debug
                   </button>
                 </div>
-                {apiTestStatus && apiTestStatus.message && (
-                  <div className={`api-test-message ${apiTestStatus.success ? 'success' : 'error'}`}>
-                    {apiTestStatus.message}
-                  </div>
-                )}
-              </div>
+              </>
             )}
 
             <div className="actions">
               <button type="submit" className="start-game-btn">開始遊戲</button>
-              <button 
-                type="button" 
-                className="save-settings-btn" 
+              <button
+                type="button"
+                className="save-settings-btn"
                 onClick={handleSaveSettings}
               >
                 儲存設定
               </button>
-              <button 
-                type="button" 
-                className="show-rules-btn" 
+              <button
+                type="button"
+                className="show-rules-btn"
                 onClick={() => setShowRules(!showRules)}
               >
                 {showRules ? '隱藏規則' : '查看規則'}
