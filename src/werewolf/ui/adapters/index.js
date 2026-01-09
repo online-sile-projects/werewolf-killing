@@ -6,13 +6,14 @@
 import { GameAdapter, MessageTypes } from './GameAdapter.js';
 import { ConsoleAdapter } from './ConsoleAdapter.js';
 import { ReactAdapter } from './ReactAdapter.js';
+import { CommandLineAdapter } from './CommandLineAdapter.js';
 
 // 匯出類別
-export { GameAdapter, MessageTypes, ConsoleAdapter, ReactAdapter };
+export { GameAdapter, MessageTypes, ConsoleAdapter, ReactAdapter, CommandLineAdapter };
 
 /**
  * 建立適配器工廠函式
- * @param {string} type - 適配器類型 ('console' | 'react')
+ * @param {string} type - 適配器類型 ('console' | 'react' | 'cli')
  * @param {Object} callbacks - React 回呼函式 (僅用於 'react' 類型)
  */
 export function createAdapter(type, callbacks = {}) {
@@ -24,6 +25,9 @@ export function createAdapter(type, callbacks = {}) {
             adapter.setCallbacks(callbacks);
             return adapter;
         }
+        case 'cli':
+        case 'commandline':
+            return new CommandLineAdapter();
         default:
             throw new Error(`未知的適配器類型: ${type}`);
     }
@@ -33,6 +37,7 @@ export default {
     GameAdapter,
     ConsoleAdapter,
     ReactAdapter,
+    CommandLineAdapter,
     MessageTypes,
     createAdapter
 };
