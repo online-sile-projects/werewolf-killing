@@ -13,6 +13,9 @@ import { EventEmitter, GameEvents } from './core/EventEmitter.js';
 import { GameState } from './core/GameState.js';
 import { PlayerManager } from './core/PlayerManager.js';
 
+// 匯入 NPC 服務
+import { npcService } from './npc/index.js';
+
 export class WerewolfGame {
   constructor() {
     // 初始化核心系統
@@ -294,6 +297,10 @@ export class WerewolfGame {
 
     const humanPlayer = this._playerManager.createPlayers(playerCount, humanName);
 
+    // 為 NPC 玩家分配個性
+    npcService.clearAssignments();
+    npcService.assignNpcsToPlayers(this._playerManager.players);
+
     this.log.success(`已創建 ${this._playerManager.playerCount} 名玩家:`);
     this._playerManager.forEach(player => {
       this.log.player(`- ID: ${player.id}, 名稱: ${player.name}${player.isHuman ? ' (人類玩家)' : ''}`);
@@ -419,6 +426,13 @@ export class WerewolfGame {
       return null;
     }
 
+    // 取得 NPC 個性 prompt
+    const npc = npcService.getNpcForPlayer(playerId);
+    let personalityPrompt = null;
+    if (npc) {
+      personalityPrompt = npcService.generatePersonalityPrompt(npc.id, player.role);
+    }
+
     const gameStatus = {
       phase: this._gameState.phase,
       day: this._gameState.day,
@@ -433,12 +447,25 @@ export class WerewolfGame {
         role: p.role
       })),
       playerRole: player.role,
-      playerId: player.id
+      playerId: player.id,
+      npcName: npc ? npc.name : player.name,
+      npcPersonality: npc ? npc.personality : null
     };
 
     try {
-      const response = await this.apiManager.generateNpcResponse(player.role, context, player.id, null, gameStatus);
+      const response = await this.apiManager.generateNpcResponse(
+        player.role,
+        context,
+        player.id,
+        personalityPrompt,  // 傳入個性 prompt
+        gameStatus
+      );
       if (response && response.response) {
+        // 解析情緒標記（如果有）
+        if (npc) {
+          const parsed = npcService.parseEmotionFromResponse(response.response);
+          return parsed.text;
+        }
         return response.response;
       }
       return null;
