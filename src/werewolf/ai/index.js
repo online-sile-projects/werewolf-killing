@@ -1,14 +1,19 @@
 /**
  * AI 模組入口
- * 統一匯出所有 AI Provider
+ * 統一匯出所有 AI 相關元件
  */
 
+// 原有的 Provider 架構（用於更進階的使用場景）
 import AIProvider from './AIProvider.js';
 import OpenAIProvider from './OpenAIProvider.js';
 import GeminiProvider from './GeminiProvider.js';
 
+// 新的統一服務層
+import { AIService, aiService } from './AIService.js';
+import { DecisionEngine, decisionEngine } from './decisionEngine.js';
+
 /**
- * AI Manager - 管理多個 Provider
+ * AIManager - 管理多個 Provider（保持向後相容）
  */
 export class AIManager {
     constructor() {
@@ -132,7 +137,15 @@ export class AIManager {
     }
 }
 
-// 匯出
+// ========== 匯出 ==========
+
+// Provider 架構
 export { AIProvider, OpenAIProvider, GeminiProvider };
+
+// 新的服務層
+export { AIService, aiService, DecisionEngine, decisionEngine };
+
+// AIManager（向後相容）
 export const aiManager = new AIManager();
+
 export default aiManager;
