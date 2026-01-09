@@ -4,6 +4,9 @@
  * 使用方式: node cli.js
  */
 
+// 載入 .env 檔案
+import 'dotenv/config';
+
 import { WerewolfGame } from './werewolf/WerewolfGame.js';
 import { CommandLineAdapter } from './werewolf/ui/adapters/CommandLineAdapter.js';
 import ApiManager from './werewolf/api/apiManager.js';
